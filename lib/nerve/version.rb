@@ -1,3 +1,3 @@
 module Nerve
-  VERSION = "0.5.4"
+  VERSION = "0.9.1"
 end

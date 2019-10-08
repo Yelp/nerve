@@ -67,6 +67,20 @@ describe Nerve::Reporter::Test do
     it 'works if the weight is a string' do
       expect(subject.get_service_data({'host' => '127.0.0.1', 'port' => 6666, 'instance_id' => 'foobar', 'weight' => '3'})['weight']).to eql(3)
     end
+
+    it 'correctly passes haproxy_server_options' do
+      expect(subject.get_service_data({
+        'host' => '127.0.0.1', 'port' => 6666, 'instance_id' => 'foobar',
+        'haproxy_server_options' => 'backup'
+      })['haproxy_server_options']).to eql('backup')
+    end
+    it 'correctly passes labels' do
+      labels = {'az' => 'us-west-1', 'custom_key' => 'custom_value'}
+      expect(subject.get_service_data({
+        'host' => '127.0.0.1', 'port' => 6666, 'instance_id' => 'foobar',
+        'labels' => labels
+      })['labels']).to eql(labels)
+    end
   end
 end
 

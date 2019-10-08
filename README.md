@@ -19,17 +19,27 @@ The information it reports can be used to take action from a centralized automat
 
 ## Installation ##
 
-Add this line to your application's Gemfile:
+To download and run the nerve binary, first install a version of ruby. Then,
+install nerve with:
 
-    gem 'nerve'
+```bash
+$ mkdir -p /opt/smartstack/nerve
 
-And then execute:
+# If you want to install specific versions of dependencies such as an older
+# version of the aws-sdk, the docker-api, etc, gem install that here *before*
+# gem installing nerve. This is also where you would gem install
+# custom reporters.
 
-    $ bundle
+# If you are on Ruby 2.X use --no-document instead of --no-ri --no-rdoc
+$ gem install nerve --install-dir /opt/smartstack/nerve --no-ri --no-rdoc
+```
 
-Or install it yourself as:
-
-    $ gem install nerve
+This will download nerve and its dependencies into /opt/smartstack/nerve. You
+might wish to omit the `--install-dir` flag to use your system's default gem
+path, however this will require you to run `gem install nerve` with root
+permissions. You can also install via bundler, but keep in mind you'll pick up
+Nerve's version of library dependencies and possibly not the ones you need
+for your infra/apps.
 
 ## Configuration ##
 
@@ -49,12 +59,25 @@ Each service that nerve will be monitoring is specified in the `services` hash.
 The key is the name of the service, and the value is a configuration hash telling nerve how to monitor the service.
 The configuration contains the following options:
 
-* `host`: the default host on which to make service checks; you should make this your *public* ip to ensure your service is publically accessible
+* `host`: the default host on which to make service checks; you should make this your *public* ip to ensure your service is publicly accessible
 * `port`: the default port for service checks; nerve will report the `host`:`port` combo via your chosen reporter
 * `reporter_type`: the mechanism used to report up/down information; depending on the reporter you choose, additional parameters may be required. Defaults to `zookeeper`
 * `check_interval`: the frequency with which service checks will be initiated; defaults to `500ms`
+* `check_mocked`: whether or not health check is mocked, the host check always returns healthy and report up when the value is true
 * `checks`: a list of checks that nerve will perform; if all of the pass, the service will be registered; otherwise, it will be un-registered
-* `weight`: a positive integer weight value which can be used to affect the haproxy backend weighting in synapse.
+* `rate_limiting` (optional): a hash containing the configuration for rate limiting (see 'Rate Limiting' below)
+* `weight` (optional): a positive integer weight value which can be used to affect the haproxy backend weighting in synapse.
+* `haproxy_server_options` (optional): a string containing any special haproxy server options for this service instance. For example if you wanted to set a service instance as a backup.
+* `labels` (optional): an object containing user-defined key-value pairs that describe this service instance. For example, you could label service instances with datacenter information.
+
+#### Rate Limiting ####
+
+Rate limiting is configured in the `rate_limiting` hash. If enabled, rate limiting is done via the [Token-Bucket algorithm](https://en.wikipedia.org/wiki/Token_bucket).
+That hash contains the following values:
+
+* `shadow_mode` (optional): shadow mode emits metrics/logs for rate limiting, but does not actually throttle requests (defaults to `true`). Set to `false` to throttle requests.
+* `average_rate` (optional): enforced average rate limit for reporting (defaults to `infinity`)
+* `max_burst` (optional): enforced maximum burst for reporting (defaults to `infinity`)
 
 #### Zookeeper Reporter ####
 
@@ -62,10 +85,11 @@ If you set your `reporter_type` to `"zookeeper"` you should also set these param
 
 * `zk_hosts`: a list of the zookeeper hosts comprising the [ensemble](https://zookeeper.apache.org/doc/r3.1.2/zookeeperAdmin.html#sc_zkMulitServerSetup) that nerve will submit registration to
 * `zk_path`: the path (or [znode](https://zookeeper.apache.org/doc/r3.1.2/zookeeperProgrammers.html#sc_zkDataModel_znodes)) where the registration will be created; nerve will create the [ephemeral node](https://zookeeper.apache.org/doc/r3.1.2/zookeeperProgrammers.html#Ephemeral+Nodes) that is the registration as a child of this path
+* `use_path_encoding`: flag to turn on path encoding optimization, the canonical config data at host level (e.g. ip, port, az) is encoded using json base64 and written as zk child name, the zk child data will still be written for backward compatibility
 
 #### Etcd Reporter ####
 
-Note: Etcd support is currently experimental! 
+Note: Etcd support is currently experimental!
 
 If you set your `reporter_type` to `"etcd"` you should also set these parameters:
 
