@@ -148,6 +148,8 @@ class Nerve::Reporter
           @zk.delete(@full_key, :ignore => :no_node)
         end
         @full_key = nil
+      else
+        log.error "Failed to delete node at: #{@zk_path} because we don't have the full_path."
       end
     end
 
