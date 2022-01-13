@@ -54,7 +54,6 @@ class Nerve::Reporter
     end
 
     def stop()
-      log.info "nerve: removing zk node at #{@full_key}" if @full_key
       begin
         report_down
       ensure
@@ -144,6 +143,8 @@ class Nerve::Reporter
 
     def zk_delete
       if @full_key
+        log.info "nerve: deleting zk node at #{@full_key}" if @full_key
+
         statsd.time('nerve.reporter.zk.delete.elapsed_time', tags: ["zk_cluster:#{@zk_cluster}"]) do
           @zk.delete(@full_key, :ignore => :no_node)
         end
@@ -154,6 +155,8 @@ class Nerve::Reporter
     end
 
     def zk_create
+      log.info "nerve: creating zk node at #{@key_prefix}"
+
       # only mkdir_p if the path does not exist
       statsd.time('nerve.reporter.zk.create.elapsed_time', tags: ["zk_cluster:#{@zk_cluster}", "zk_path:#{@zk_path}"]) do
         @zk.mkdir_p(@zk_path) unless @zk.exists?(@zk_path)
@@ -166,6 +169,7 @@ class Nerve::Reporter
 
       begin
         statsd.time('nerve.reporter.zk.save.elapsed_time', tags: ["zk_cluster:#{@zk_cluster}"]) do
+          log.info "nerve: updating zk node at #{@key_prefix}"
           @zk.set(@full_key, @data)
         end
       rescue ZK::Exceptions::NoNode
