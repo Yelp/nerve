@@ -1,15 +1,15 @@
-require 'nerve/service_watcher/base'
+require "nerve/service_watcher/base"
 
 module Nerve
   module ServiceCheck
     class RedisServiceCheck < BaseServiceCheck
-      require 'redis'
+      require "redis"
 
-      def initialize(opts={})
+      def initialize(opts = {})
         super
-        raise ArgumentError, "missing required argument 'port' in redis check" unless opts['port']
-        @port = opts['port']
-        @host = opts['host'] || '127.0.0.1'
+        raise ArgumentError, "missing required argument 'port' in redis check" unless opts["port"]
+        @port = opts["port"]
+        @host = opts["host"] || "127.0.0.1"
       end
 
       def check
@@ -18,8 +18,8 @@ module Nerve
           redis = Redis.new(host: @host, port: @port, timeout: @timeout)
           redis.ping
           # Ensure underlying host is available if proxying
-          redis.exists('nerve-redis-service-check')
-          return true
+          redis.exists("nerve-redis-service-check")
+          true
         ensure
           redis.close if redis
         end
@@ -27,6 +27,6 @@ module Nerve
     end
 
     CHECKS ||= {}
-    CHECKS['redis'] = RedisServiceCheck
+    CHECKS["redis"] = RedisServiceCheck
   end
 end

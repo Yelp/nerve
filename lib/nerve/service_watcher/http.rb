@@ -1,31 +1,31 @@
-require 'nerve/service_watcher/base'
+require "nerve/service_watcher/base"
 
 module Nerve
   module ServiceCheck
-    require 'net/http'
+    require "net/http"
 
     class HttpServiceCheck < BaseServiceCheck
-      def initialize(opts={})
+      def initialize(opts = {})
         super
 
-        %w{port uri}.each do |required|
+        %w[port uri].each do |required|
           raise ArgumentError, "missing required argument #{required} in http check" unless
             opts[required]
-          instance_variable_set("@#{required}",opts[required])
+          instance_variable_set("@#{required}", opts[required])
         end
 
-        @host        = opts['host'] || '127.0.0.1'
-        @ssl         = opts['ssl']  || false
+        @host = opts["host"] || "127.0.0.1"
+        @ssl = opts["ssl"] || false
 
-        @read_timeout = opts['read_timeout'] || @timeout
-        @open_timeout = opts['open_timeout'] || 0.2
-        @ssl_timeout  = opts['ssl_timeout']  || 0.2
+        @read_timeout = opts["read_timeout"] || @timeout
+        @open_timeout = opts["open_timeout"] || 0.2
+        @ssl_timeout = opts["ssl_timeout"] || 0.2
 
-        @headers     = opts['headers'] || {}
+        @headers = opts["headers"] || {}
 
-        @expect      = opts['expect']
+        @expect = opts["expect"]
 
-        @name        = "http-#{@host}:#{@port}#{@uri}"
+        @name = "http-#{@host}:#{@port}#{@uri}"
       end
 
       def check
@@ -38,16 +38,17 @@ module Nerve
 
         # Any 2xx or 3xx code should be considered healthy. This is standard
         # practice in HAProxy, nginx, etc ...
-        if code >= 200 and code < 400 and (@expect == nil || body.include?(@expect))
+        if code >= 200 and code < 400 and (@expect.nil? || body.include?(@expect))
           log.debug "nerve: check #{@name} got response code #{code} with body \"#{body}\""
-          return true
+          true
         else
           log.warn "nerve: check #{@name} got response code #{code} with body \"#{body}\""
-          return false
+          false
         end
       end
 
       private
+
       def get_connection
         con = Net::HTTP.new(@host, @port)
         con.read_timeout = @read_timeout
@@ -59,12 +60,11 @@ module Nerve
           con.verify_mode = OpenSSL::SSL::VERIFY_NONE
         end
 
-        return con
+        con
       end
-
     end
 
     CHECKS ||= {}
-    CHECKS['http'] = HttpServiceCheck
+    CHECKS["http"] = HttpServiceCheck
   end
 end

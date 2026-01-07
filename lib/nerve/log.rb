@@ -1,6 +1,5 @@
 module Nerve
   module Logging
-
     def log
       @logger ||= Logging.logger_for(self.class.name)
     end
@@ -15,9 +14,9 @@ module Nerve
 
       def configure_logger_for(classname)
         logger = Logger.new(STDERR)
-        logger.level = Logger::INFO unless ENV['DEBUG']
+        logger.level = Logger::INFO unless ENV["DEBUG"]
         logger.progname = classname
-        return logger
+        logger
       end
     end
   end

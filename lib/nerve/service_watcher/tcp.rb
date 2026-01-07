@@ -1,18 +1,18 @@
-require 'nerve/service_watcher/base'
+require "nerve/service_watcher/base"
 
 module Nerve
   module ServiceCheck
     class TcpServiceCheck < BaseServiceCheck
-      require 'socket'
+      require "socket"
       include Socket::Constants
 
-      def initialize(opts={})
+      def initialize(opts = {})
         super
 
-        raise ArgumentError, "missing required argument 'port' in tcp check" unless opts['port']
+        raise ArgumentError, "missing required argument 'port' in tcp check" unless opts["port"]
 
-        @port = opts['port']
-        @host = opts['host'] || '127.0.0.1'
+        @port = opts["port"]
+        @host = opts["host"] || "127.0.0.1"
 
         @address = Socket.sockaddr_in(@port, @host)
       end
@@ -38,12 +38,12 @@ module Nerve
           begin
             socket.connect_nonblock(@address)
           rescue Errno::EISCONN
-            return true
+            true
           end
         else
           # we managed to connect REALLY REALLY FAST
           log.debug "nerve: connected to non-blocking socket without an exception"
-          return true
+          true
         ensure
           socket.close
         end
@@ -51,6 +51,6 @@ module Nerve
     end
 
     CHECKS ||= {}
-    CHECKS['tcp'] = TcpServiceCheck
+    CHECKS["tcp"] = TcpServiceCheck
   end
 end

@@ -46,6 +46,14 @@ test: ## Run test suite
 test-docker: ## Run tests in Docker container
 	docker run --rm $(DOCKER_IMAGE)
 
+.PHONY: lint
+lint: ## Check code style with StandardRB
+	bundle exec standardrb
+
+.PHONY: fix
+fix: ## Auto-fix code style issues
+	bundle exec standardrb --fix
+
 .PHONY: console
 console: ## Start interactive Ruby console
 	@if bundle check >/dev/null 2>&1; then \

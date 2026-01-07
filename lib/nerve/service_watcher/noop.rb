@@ -1,4 +1,4 @@
-require 'nerve/service_watcher/base'
+require "nerve/service_watcher/base"
 
 module Nerve
   module ServiceCheck
@@ -12,6 +12,6 @@ module Nerve
     end
 
     CHECKS ||= {}
-    CHECKS['noop'] = NoopServiceCheck
+    CHECKS["noop"] = NoopServiceCheck
   end
 end

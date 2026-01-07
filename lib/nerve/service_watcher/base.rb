@@ -1,4 +1,4 @@
-require 'nerve/ring_buffer'
+require "nerve/ring_buffer"
 
 module Nerve
   module ServiceCheck
@@ -8,11 +8,11 @@ module Nerve
 
       attr_reader :name
 
-      def initialize(opts={})
-        @timeout = opts['timeout'] ? opts['timeout'].to_f : 0.1
-        @rise    = opts['rise']    ? opts['rise'].to_i    : 1
-        @fall    = opts['fall']    ? opts['fall'].to_i    : 1
-        @name    = opts['name']    ? opts['name']         : "undefined"
+      def initialize(opts = {})
+        @timeout = opts["timeout"] ? opts["timeout"].to_f : 0.1
+        @rise = opts["rise"] ? opts["rise"].to_i : 1
+        @fall = opts["fall"] ? opts["fall"].to_i : 1
+        @name = opts["name"] || "undefined"
 
         @check_buffer = RingBuffer.new([@rise, @fall].max)
         @last_result = nil
@@ -25,9 +25,9 @@ module Nerve
         end
 
         # this is the first check -- initialize buffer
-        if @last_result == nil
+        if @last_result.nil?
           @last_result = check_result
-          @check_buffer.size.times {@check_buffer.push check_result}
+          @check_buffer.size.times { @check_buffer.push check_result }
           log.info "nerve: service check #{@name} initial check returned #{check_result}"
         end
 
@@ -47,21 +47,18 @@ module Nerve
         end
 
         # otherwise return the last result
-        return @last_result
+        @last_result
       end
 
       def catch_errors(&block)
-        begin
-          return yield
-        rescue Object => error
-          log.info "nerve: service check #{@name} got error #{error.inspect}"
-          return false
-        end
+        yield
+      rescue Object => error
+        log.info "nerve: service check #{@name} got error #{error.inspect}"
+        false
       end
     end
 
     CHECKS ||= {}
-    CHECKS['base'] = BaseServiceCheck
+    CHECKS["base"] = BaseServiceCheck
   end
 end
-

@@ -1,5 +1,5 @@
-require 'datadog/statsd'
-require 'nerve/log'
+require "datadog/statsd"
+require "nerve/log"
 
 module Nerve
   module StatsD
@@ -22,8 +22,8 @@ module Nerve
       end
 
       def configure_statsd(opts)
-        @@STATSD_HOST = opts['host'] || @@STATSD_HOST
-        @@STATSD_PORT = (opts['port'] || @@STATSD_PORT).to_i
+        @@STATSD_HOST = opts["host"] || @@STATSD_HOST
+        @@STATSD_PORT = (opts["port"] || @@STATSD_PORT).to_i
         @@STATSD_RELOAD = true
         log.info "nerve: configuring statsd on host '#{@@STATSD_HOST}' port #{@@STATSD_PORT}"
       end

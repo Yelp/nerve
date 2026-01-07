@@ -1,5 +1,5 @@
-require 'yaml'
-require 'optparse'
+require "yaml"
+require "optparse"
 
 module Nerve
   class ConfigurationManager
@@ -10,30 +10,30 @@ module Nerve
       options = {}
       # set command line options
       optparse = OptionParser.new do |opts|
-        opts.banner =<<EOB
-Welcome to nerve
+        opts.banner = <<~EOB
+          Welcome to nerve
+          
+          Usage: nerve --config /path/to/nerve/config
+        EOB
 
-Usage: nerve --config /path/to/nerve/config
-EOB
-
-        options[:config] = ENV['NERVE_CONFIG']
-        opts.on('-c config','--config config', String, 'path to nerve config') do |key,value|
+        options[:config] = ENV["NERVE_CONFIG"]
+        opts.on("-c config", "--config config", String, "path to nerve config") do |key, value|
           options[:config] = key
         end
 
-        options[:instance_id] = ENV['NERVE_INSTANCE_ID']
-        opts.on('-i instance_id','--instance_id instance_id', String,
-          'reported as `name` to ZK; overrides instance id from config file') do |key,value|
+        options[:instance_id] = ENV["NERVE_INSTANCE_ID"]
+        opts.on("-i instance_id", "--instance_id instance_id", String,
+          "reported as `name` to ZK; overrides instance id from config file") do |key, value|
           options[:instance_id] = key
         end
 
-        options[:check_config] = ENV['NERVE_CHECK_CONFIG']
-        opts.on('-k', '--check-config',
-                'Validate the nerve config ONLY and exit 0 if valid (non zero otherwise)') do |_|
+        options[:check_config] = ENV["NERVE_CHECK_CONFIG"]
+        opts.on("-k", "--check-config",
+          "Validate the nerve config ONLY and exit 0 if valid (non zero otherwise)") do |_|
           options[:check_config] = true
         end
 
-        opts.on('-h', '--help', 'Display this screen') do
+        opts.on("-h", "--help", "Display this screen") do
           puts opts
           exit
         end
@@ -43,24 +43,24 @@ EOB
     end
 
     def parse_options!
-     @options = parse_options_from_argv!
+      @options = parse_options_from_argv!
     end
 
     def generate_nerve_config(options)
       config = parse_config_file(options[:config])
-      config['services'] ||= {}
+      config["services"] ||= {}
 
-      if config.has_key?('service_conf_dir')
-        cdir = File.expand_path(config['service_conf_dir'])
-        if ! Dir.exist?(cdir) then
+      if config.has_key?("service_conf_dir")
+        cdir = File.expand_path(config["service_conf_dir"])
+        if !Dir.exist?(cdir)
           raise "service conf dir does not exist:#{cdir}"
         end
-        cfiles = Dir.glob(File.join(cdir, '*.{yaml,json}'))
-        cfiles.each { |x| config['services'][File.basename(x[/(.*)\.(yaml|json)$/, 1])] = parse_config_file(x) }
+        cfiles = Dir.glob(File.join(cdir, "*.{yaml,json}"))
+        cfiles.each { |x| config["services"][File.basename(x[/(.*)\.(yaml|json)$/, 1])] = parse_config_file(x) }
       end
 
       if options[:instance_id] && !options[:instance_id].empty?
-        config['instance_id'] = options[:instance_id]
+        config["instance_id"] = options[:instance_id]
       end
 
       config
@@ -69,7 +69,7 @@ EOB
     def parse_config_file(filename)
       # parse nerve config file
       begin
-        c = YAML::parse(File.read(filename))
+        c = YAML.parse_file(filename)
       rescue Errno::ENOENT => e
         raise ArgumentError, "config file does not exist:\n#{e.inspect}"
       rescue Errno::EACCES => e
@@ -77,7 +77,7 @@ EOB
       rescue YAML::SyntaxError => e
         raise "config file #{filename} is not proper yaml:\n#{e.inspect}"
       end
-      return c.to_ruby
+      c.to_ruby
     end
 
     def reload!
@@ -86,5 +86,3 @@ EOB
     end
   end
 end
-
-
