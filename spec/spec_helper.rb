@@ -6,9 +6,9 @@
 # See http://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 require "#{File.dirname(__FILE__)}/../lib/nerve"
 
-require 'factory_girl'
+require 'factory_bot'
 
-FactoryGirl.find_definitions
+FactoryBot.find_definitions
 
 RSpec.configure do |config|
   config.run_all_when_everything_filtered = true
@@ -22,8 +22,8 @@ RSpec.configure do |config|
     mocks.verify_partial_doubles = true
   end
 
-  # include factory-girl when running tests
-  config.include FactoryGirl::Syntax::Methods
+  # include factory_bot when running tests
+  config.include FactoryBot::Syntax::Methods
 
   # Run specs in random order to surface order dependencies. If you find an
   # order dependency and want to debug it, you can fix the order by providing

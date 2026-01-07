@@ -1,13 +1,13 @@
-FactoryGirl.define do
+FactoryBot.define do
   factory :check, :class => Hash do
-    type       'base'
-    timeout    0.2
-    rise       3
-    fall       2
+    type       { 'base' }
+    timeout    { 0.2 }
+    rise       { 3 }
+    fall       { 2 }
 
     trait :http do
-      type   'http'
-      uri    '/health'
+      type   { 'http' }
+      uri    { '/health' }
     end
 
     initialize_with { Hash[attributes.map{|k,v| [k.to_s,v]}] }

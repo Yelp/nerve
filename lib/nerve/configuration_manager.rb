@@ -52,7 +52,7 @@ EOB
 
       if config.has_key?('service_conf_dir')
         cdir = File.expand_path(config['service_conf_dir'])
-        if ! Dir.exists?(cdir) then
+        if ! Dir.exist?(cdir) then
           raise "service conf dir does not exist:#{cdir}"
         end
         cfiles = Dir.glob(File.join(cdir, '*.{yaml,json}'))
