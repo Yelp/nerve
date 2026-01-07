@@ -23,7 +23,8 @@ describe Nerve::ServiceCheck::RedisServiceCheck do
         check_without = check.dup
         check_without.delete(req)
 
-        expect { described_class.new(check_without) }.to raise_error
+        expect { described_class.new(check_without) }
+          .to raise_error(ArgumentError, "missing required argument 'port' in redis check")
       end
     end
   end
@@ -45,7 +46,7 @@ describe Nerve::ServiceCheck::RedisServiceCheck do
       allow(Redis).to receive(:new).and_return(redis)
       expect(redis).to receive(:ping).and_raise(Redis::TimeoutError)
       expect(redis).to receive(:close)
-      expect { service_check.check }.to raise_error
+      expect { service_check.check }.to raise_error(Redis::TimeoutError)
     end
   end
 end

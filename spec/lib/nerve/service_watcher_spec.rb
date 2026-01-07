@@ -18,7 +18,8 @@ describe Nerve::ServiceWatcher do
         service_without = service.dup
         service_without.delete(req)
 
-        expect { Nerve::ServiceWatcher.new(service_without) }.to raise_error
+        expect { Nerve::ServiceWatcher.new(service_without) }
+          .to raise_error(ArgumentError, "missing required argument #{req} for new service watcher")
       end
     end
   end
