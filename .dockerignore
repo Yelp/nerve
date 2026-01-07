@@ -1,0 +1,7 @@
+Gemfile.lock
+.git
+.bundle
+.venv
+tmp
+coverage
+vendor
