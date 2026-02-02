@@ -1,14 +1,14 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-unless ENV['COOKBOOK_DIR'] and ENV['DATA_BAG_DIR']
-  STDERR.puts "you need to set COOKBOOK_DIR and DATA_BAG_DIR as environment variables"
+unless ENV["COOKBOOK_DIR"] and ENV["DATA_BAG_DIR"]
+  warn "you need to set COOKBOOK_DIR and DATA_BAG_DIR as environment variables"
   Kernel.exit 1
 end
 
-this_dir = File.dirname(File.expand_path __FILE__)
+this_dir = File.dirname(File.expand_path(__FILE__))
 
-STDERR.puts "mounting #{this_dir} as /root/this_dir"
+warn "mounting #{this_dir} as /root/this_dir"
 
 Vagrant::Config.run do |config|
   # All Vagrant configuration is done here. The most common configuration
@@ -22,7 +22,7 @@ Vagrant::Config.run do |config|
   # doesn't already exist on the user's system.
   # config.vm.box_url = "http://domain.com/path/to/above.box"
 
-  config.vm.box_url = 'http://files.vagrantup.com/precise64.box'
+  config.vm.box_url = "http://files.vagrantup.com/precise64.box"
 
   # Boot with a GUI so you can see the screen. (Default is headless)
   # config.vm.boot_mode = :gui
@@ -47,7 +47,7 @@ Vagrant::Config.run do |config|
   # folder, and the third is the path on the host to the actual folder.
   # config.vm.share_folder "v-data", "/vagrant_data", "../data"
 
-  config.vm.share_folder 'this_dir', '/this_dir', this_dir
+  config.vm.share_folder "this_dir", "/this_dir", this_dir
 
   # Enable provisioning with Puppet stand alone.  Puppet manifests
   # are contained in a directory path relative to this Vagrantfile.
@@ -73,23 +73,23 @@ Vagrant::Config.run do |config|
   # end
 
   # Enable provisioning with chef solo, specifying a cookbooks path, roles
-  # path, and data_bags path (all relative to this Vagrantfile), and adding 
+  # path, and data_bags path (all relative to this Vagrantfile), and adding
   # some recipes and/or roles.
   #
   config.vm.provision :chef_solo do |chef|
     # chef.cookbooks_path = "../my-recipes/cookbooks"
     # chef.roles_path = "../my-recipes/roles"
-#    chef.data_bags_path = '/tmp/foo'
+    #    chef.data_bags_path = '/tmp/foo'
     # chef.add_recipe "mysql"
     # chef.add_role "web"
-  
+
     # You may also specify custom JSON attributes:
     # chef.json = { :mysql_password => "foo" }
 
-    chef.data_bags_path = ENV['DATA_BAG_DIR']
-    chef.cookbooks_path = ENV['COOKBOOK_DIR']
-    chef.add_recipe 'vagrant'
-    chef.add_recipe 'nerve'
+    chef.data_bags_path = ENV["DATA_BAG_DIR"]
+    chef.cookbooks_path = ENV["COOKBOOK_DIR"]
+    chef.add_recipe "vagrant"
+    chef.add_recipe "nerve"
   end
 
   # Enable provisioning with chef server, specifying the chef server URL,

@@ -33,7 +33,7 @@ module Nerve
 
       @tokens = new_tokens - 1
       @last_refill = now
-      return true
+      true
     end
 
     private
@@ -43,7 +43,7 @@ module Nerve
       elapsed = now - @last_refill
       delta_tokens = @average_rate * elapsed
 
-      return [@tokens + delta_tokens, @max_burst].min, now
+      [[@tokens + delta_tokens, @max_burst].min, now]
     end
   end
 end

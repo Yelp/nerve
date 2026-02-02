@@ -1,7 +1,7 @@
-require 'spec_helper'
-require 'nerve/rate_limiter'
-require 'active_support/all'
-require 'active_support/testing/time_helpers'
+require "spec_helper"
+require "nerve/rate_limiter"
+require "active_support/all"
+require "active_support/testing/time_helpers"
 
 AVERAGE_RATE = 100
 MAX_BURST = 500
@@ -9,52 +9,52 @@ MAX_BURST = 500
 describe Nerve::RateLimiter do
   include ActiveSupport::Testing::TimeHelpers
 
-  describe 'initialize' do
-    it 'can successfully initialize' do
+  describe "initialize" do
+    it "can successfully initialize" do
       Nerve::RateLimiter.new(average_rate: AVERAGE_RATE, max_burst: MAX_BURST)
     end
 
-    it 'validates types of arguments' do
+    it "validates types of arguments" do
       expect {
-        Nerve::RateLimiter.new(average_rate: 'string', max_burst: 1)
+        Nerve::RateLimiter.new(average_rate: "string", max_burst: 1)
       }.to raise_error ArgumentError
-      expect{
-        Nerve::RateLimiter.new(average_rate: 1, max_burst: 'string')
+      expect {
+        Nerve::RateLimiter.new(average_rate: 1, max_burst: "string")
       }.to raise_error ArgumentError
     end
 
-    it 'validates argument constraints' do
+    it "validates argument constraints" do
       expect {
         Nerve::RateLimiter.new(average_rate: -1, max_burst: 1)
       }.to raise_error ArgumentError
-      expect{
+      expect {
         Nerve::RateLimiter.new(average_rate: 1, max_burst: 0)
       }.to raise_error ArgumentError
     end
   end
 
-  describe 'consume' do
+  describe "consume" do
     let!(:rate_limiter) {
       Nerve::RateLimiter.new(average_rate: AVERAGE_RATE, max_burst: MAX_BURST)
     }
 
-    context 'when no tokens have been consumed' do
-      it 'allows tokens to be consumed' do
+    context "when no tokens have been consumed" do
+      it "allows tokens to be consumed" do
         expect(rate_limiter.consume).to be true
       end
 
-      it 'allows up to the maximum burst' do
+      it "allows up to the maximum burst" do
         # Wait until there are enough tokens to hit the maximum burst
-        travel (MAX_BURST / AVERAGE_RATE + 1)
+        travel(MAX_BURST / AVERAGE_RATE + 1)
 
         for _ in 1..MAX_BURST do
           expect(rate_limiter.consume).to be true
         end
       end
 
-      it 'does not allow more than the maximum burst' do
+      it "does not allow more than the maximum burst" do
         # Wait until there are enough tokens to hit the maximum burst
-        travel (MAX_BURST / AVERAGE_RATE + 1)
+        travel(MAX_BURST / AVERAGE_RATE + 1)
 
         for _ in 1..MAX_BURST do
           rate_limiter.consume
@@ -64,7 +64,7 @@ describe Nerve::RateLimiter do
       end
     end
 
-    context 'when all tokens are consumed' do
+    context "when all tokens are consumed" do
       before {
         # consume up to the maximum burst
         for _ in 1..MAX_BURST do
@@ -72,22 +72,22 @@ describe Nerve::RateLimiter do
         end
       }
 
-      it 'does not allow tokens to be consumed' do
+      it "does not allow tokens to be consumed" do
         expect(rate_limiter.consume).to be false
       end
 
-      it 'allows token to be consumed next period' do
+      it "allows token to be consumed next period" do
         travel 1
         expect(rate_limiter.consume).to be true
       end
     end
 
-    context 'when the average rate is infinite' do
+    context "when the average rate is infinite" do
       let!(:rate_limiter) {
         Nerve::RateLimiter.new(average_rate: Float::INFINITY, max_burst: MAX_BURST)
       }
 
-      it 'always allows tokens to be consumed' do
+      it "always allows tokens to be consumed" do
         travel_to Time.now
 
         # Should be able to consume more than the maximum burst
@@ -97,7 +97,7 @@ describe Nerve::RateLimiter do
       end
     end
 
-    it 'only allows average rate over time' do
+    it "only allows average rate over time" do
       start_time = Time.now
       count_success = 0
       num_periods = 250
