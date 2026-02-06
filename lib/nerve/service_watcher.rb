@@ -12,7 +12,7 @@ module Nerve
     include StatsD
     include PrometheusMetrics
 
-    attr_reader :was_up
+    attr_reader :was_up, :repeated_report_failures
 
     def initialize(service = {})
       log.debug "nerve: creating service watcher object"
@@ -79,6 +79,7 @@ module Nerve
       @should_finish = false
 
       @max_repeated_report_failures = service["max_repeated_report_failures"] || 10
+      @repeated_report_failures = 0
 
       log.debug "nerve: created service watcher for #{@name} with #{@service_checks.size} checks"
     end
@@ -115,15 +116,15 @@ module Nerve
 
       @reporter.start
 
-      repeated_report_failures = 0
-      until watcher_should_exit? || repeated_report_failures >= @max_repeated_report_failures
+      @repeated_report_failures = 0
+      until watcher_should_exit? || @repeated_report_failures >= @max_repeated_report_failures
         report_succeeded = check_and_report
 
         case report_succeeded
         when true
-          repeated_report_failures = 0
+          @repeated_report_failures = 0
         when false
-          repeated_report_failures += 1
+          @repeated_report_failures += 1
         when nil
           # this case exists for when the request is throttled
           # do nothing
@@ -136,13 +137,16 @@ module Nerve
         responsive_sleep(@check_interval) { watcher_should_exit? }
       end
 
-      if repeated_report_failures >= @max_repeated_report_failures
+      if @repeated_report_failures >= @max_repeated_report_failures
         statsd.increment("nerve.watcher.stop", tags: ["stop_avenue:failure", "stop_location:main_loop", "service_name:#{@name}"])
+        prom_inc(:watcher_stops_total, labels: {reason: "failure"})
       else
         statsd.increment("nerve.watcher.stop", tags: ["stop_avenue:clean", "stop_location:main_loop", "service_name:#{@name}"])
+        prom_inc(:watcher_stops_total, labels: {reason: "clean"})
       end
     rescue => e
       statsd.increment("nerve.watcher.stop", tags: ["stop_avenue:abort", "stop_location:main_loop", "service_name:#{@name}", "exception_name:#{e.class.name}", "exception_message:#{e.message}"])
+      prom_inc(:watcher_stops_total, labels: {reason: "abort"})
       log.error "nerve: error in service watcher #{@name}: #{e.inspect}"
       raise e
     ensure
@@ -153,6 +157,7 @@ module Nerve
     def check_and_report
       if !@reporter.ping?
         statsd.increment("nerve.watcher.status.ping.count", tags: ["ping_result:fail", "service_name:#{@name}"])
+        prom_inc(:reporter_ping_results_total, labels: {result: "fail"})
 
         # If the reporter can't ping, then we do not know the status and must force a new report.
         # We will also skip checking service status since it couldn't be reported
@@ -160,6 +165,7 @@ module Nerve
         return false
       end
       statsd.increment("nerve.watcher.status.ping.count", tags: ["ping_result:success", "service_name:#{@name}"])
+      prom_inc(:reporter_ping_results_total, labels: {result: "success"})
 
       # what is the status of the service?
       is_up = check?
@@ -170,6 +176,7 @@ module Nerve
         if !@rate_limiter.consume
           log.warn "nerve: service #{@name} throttled (shadow mode: #{@rate_limit_shadow_mode})"
           statsd.increment("nerve.watcher.throttled", tags: ["service_name:#{@name}", "shadow_mode:#{@rate_limit_shadow_mode}"])
+          prom_inc(:watcher_throttled_total)
 
           unless @rate_limit_shadow_mode
             # When the request is throttled, ensure that the status is reported
@@ -187,15 +194,19 @@ module Nerve
           report_succeeded = @reporter.report_up
           if report_succeeded
             log.info "nerve: service #{@name} is now up"
+            prom_inc(:report_results_total, labels: {action: "up", result: "success"})
           else
             log.warn "nerve: service #{@name} failed to report up"
+            prom_inc(:report_results_total, labels: {action: "up", result: "fail"})
           end
         else
           report_succeeded = @reporter.report_down
           if report_succeeded
             log.warn "nerve: service #{@name} is now down"
+            prom_inc(:report_results_total, labels: {action: "down", result: "success"})
           else
             log.warn "nerve: service #{@name} failed to report down"
+            prom_inc(:report_results_total, labels: {action: "down", result: "fail"})
           end
         end
 
@@ -213,9 +224,8 @@ module Nerve
     end
 
     def check?
-      if @check_mocked
-        return true
-      end
+      return true if @check_mocked
+
       @service_checks.each do |check|
         up = check.up?
         statsd.increment("nerve.watcher.status.service_check", tags: ["check_result:#{up ? "up" : "down"}", "service_name:#{@name}", "check_name:#{check.name}"])

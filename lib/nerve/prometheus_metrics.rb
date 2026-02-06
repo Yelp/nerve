@@ -66,6 +66,65 @@ module Nerve
       private
 
       def register_metrics(zk_buckets: HISTOGRAM_BUCKETS_ZK, main_loop_buckets: HISTOGRAM_BUCKETS_MAIN_LOOP)
+        # Gauges
+        @@prom_metrics[:watchers_desired] = @@prom_registry.gauge(
+          :nerve_watchers_desired,
+          docstring: "Number of service watchers desired from config"
+        )
+        @@prom_metrics[:watchers_running] = @@prom_registry.gauge(
+          :nerve_watchers_running,
+          docstring: "Number of service watchers currently running"
+        )
+        @@prom_metrics[:watchers_up] = @@prom_registry.gauge(
+          :nerve_watchers_up,
+          docstring: "Number of service watchers currently reporting up"
+        )
+        @@prom_metrics[:watchers_down] = @@prom_registry.gauge(
+          :nerve_watchers_down,
+          docstring: "Number of service watchers currently reporting down"
+        )
+        @@prom_metrics[:repeated_report_failures_max] = @@prom_registry.gauge(
+          :nerve_repeated_report_failures_max,
+          docstring: "Worst-case repeated report failure count across all watchers"
+        )
+
+        # Counters
+        @@prom_metrics[:report_results_total] = @@prom_registry.counter(
+          :nerve_report_results_total,
+          docstring: "Total report up/down attempts and results",
+          labels: [:action, :result]
+        )
+        @@prom_metrics[:reporter_ping_results_total] = @@prom_registry.counter(
+          :nerve_reporter_ping_results_total,
+          docstring: "Total reporter ping results",
+          labels: [:result]
+        )
+        @@prom_metrics[:watcher_stops_total] = @@prom_registry.counter(
+          :nerve_watcher_stops_total,
+          docstring: "Total watcher stop events",
+          labels: [:reason]
+        )
+        @@prom_metrics[:watcher_launches_total] = @@prom_registry.counter(
+          :nerve_watcher_launches_total,
+          docstring: "Total watcher launch events",
+          labels: [:reason]
+        )
+        @@prom_metrics[:watcher_throttled_total] = @@prom_registry.counter(
+          :nerve_watcher_throttled_total,
+          docstring: "Total watcher throttle events"
+        )
+        @@prom_metrics[:config_reloads_total] = @@prom_registry.counter(
+          :nerve_config_reloads_total,
+          docstring: "Total configuration reloads"
+        )
+
+        # Histograms
+        @@prom_metrics[:main_loop_duration_seconds] = @@prom_registry.histogram(
+          :nerve_main_loop_duration_seconds,
+          docstring: "Duration of main loop iterations in seconds",
+          buckets: main_loop_buckets
+        )
+
         # Info
         @@prom_metrics[:build_info] = @@prom_registry.gauge(
           :nerve_build_info,
