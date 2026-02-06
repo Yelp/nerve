@@ -80,6 +80,14 @@ describe Nerve::Nerve do
       }
     }
 
+    def reset_prometheus_state!
+      Nerve::PrometheusMetrics.stop_server
+      Nerve::PrometheusMetrics.class_variable_set(:@@prom_enabled, false)
+      Nerve::PrometheusMetrics.class_variable_set(:@@prom_registry, nil)
+      Nerve::PrometheusMetrics.class_variable_set(:@@prom_metrics, {})
+      Nerve::PrometheusMetrics.class_variable_set(:@@prom_server, nil)
+    end
+
     it "does a regular run and finishes" do
       nerve = Nerve::Nerve.new(mock_config_manager)
 
@@ -88,6 +96,100 @@ describe Nerve::Nerve do
       }
 
       expect { nerve.run }.not_to raise_error
+    end
+
+    it "enables prometheus after reload when initially disabled" do
+      allow(Nerve::PrometheusMetrics).to receive(:start_server)
+      reset_prometheus_state!
+
+      services_config = {
+        "service1" => {
+          "host" => "localhost",
+          "port" => 1234
+        },
+        "service2" => {
+          "host" => "localhost",
+          "port" => 1235
+        }
+      }
+      disabled_config = {
+        "instance_id" => nerve_instance_id,
+        "services" => services_config,
+        "prometheus" => {"enabled" => false}
+      }
+      enabled_config = {
+        "instance_id" => nerve_instance_id,
+        "services" => services_config,
+        "prometheus" => {"enabled" => true, "port" => 19297}
+      }
+      current_config = disabled_config
+      allow(mock_config_manager).to receive(:config) { current_config }
+
+      nerve = Nerve::Nerve.new(mock_config_manager)
+      iterations = 1
+      expect(nerve).to receive(:heartbeat).exactly(iterations + 1).times do
+        if iterations == 1
+          expect(Nerve::PrometheusMetrics.enabled?).to be false
+          current_config = enabled_config
+          nerve.instance_variable_set(:@config_to_load, true)
+        else
+          expect(Nerve::PrometheusMetrics.enabled?).to be true
+          $EXIT = true
+        end
+        iterations -= 1
+      end
+
+      expect { nerve.run }.not_to raise_error
+      expect(Nerve::PrometheusMetrics.enabled?).to be true
+    ensure
+      reset_prometheus_state!
+    end
+
+    it "disables prometheus after reload when config disables" do
+      allow(Nerve::PrometheusMetrics).to receive(:start_server)
+      reset_prometheus_state!
+
+      services_config = {
+        "service1" => {
+          "host" => "localhost",
+          "port" => 1234
+        },
+        "service2" => {
+          "host" => "localhost",
+          "port" => 1235
+        }
+      }
+      enabled_config = {
+        "instance_id" => nerve_instance_id,
+        "services" => services_config,
+        "prometheus" => {"enabled" => true, "port" => 19297}
+      }
+      disabled_config = {
+        "instance_id" => nerve_instance_id,
+        "services" => services_config,
+        "prometheus" => {"enabled" => false}
+      }
+      current_config = enabled_config
+      allow(mock_config_manager).to receive(:config) { current_config }
+
+      nerve = Nerve::Nerve.new(mock_config_manager)
+      iterations = 1
+      expect(nerve).to receive(:heartbeat).exactly(iterations + 1).times do
+        if iterations == 1
+          expect(Nerve::PrometheusMetrics.enabled?).to be true
+          current_config = disabled_config
+          nerve.instance_variable_set(:@config_to_load, true)
+        else
+          expect(Nerve::PrometheusMetrics.enabled?).to be false
+          $EXIT = true
+        end
+        iterations -= 1
+      end
+
+      expect { nerve.run }.not_to raise_error
+      expect(Nerve::PrometheusMetrics.enabled?).to be false
+    ensure
+      reset_prometheus_state!
     end
 
     it "relaunches dead watchers" do
