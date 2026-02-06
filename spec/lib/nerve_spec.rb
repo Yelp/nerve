@@ -55,6 +55,7 @@ describe Nerve::Nerve do
       }
 
       allow(mock_config_manager).to receive(:reload!) {}
+      allow(mock_config_manager).to receive(:overlay_mtime) { nil }
       allow(mock_config_manager).to receive(:config) {
         {
           "instance_id" => nerve_instance_id,
@@ -201,6 +202,88 @@ describe Nerve::Nerve do
         end
         iterations -= 1
       end
+
+      expect { nerve.run }.not_to raise_error
+    end
+
+    it "triggers config reload when overlay mtime changes" do
+      nerve = Nerve::Nerve.new(mock_config_manager)
+
+      overlay_time = Time.now
+      iterations = 2
+
+      expect(nerve).to receive(:heartbeat).exactly(iterations + 1).times do
+        if iterations == 2
+          # After this heartbeat, next loop will see overlay_time
+          expect(mock_config_manager).to receive(:overlay_mtime).and_return(overlay_time)
+        elsif iterations == 1
+          # After this heartbeat, next loop will see overlay_time + 5
+          expect(mock_config_manager).to receive(:overlay_mtime).and_return(overlay_time + 5)
+        else
+          $EXIT = true
+        end
+        iterations -= 1
+      end
+
+      # Constructor sets @config_to_load = true, so first loop always reloads.
+      # Then overlay mtime appears (nil -> overlay_time) -> reload.
+      # Then overlay mtime changes (overlay_time -> overlay_time+5) -> reload.
+      # Total: 3 reloads during run.
+      expect(mock_config_manager).to receive(:reload!).exactly(3).times
+
+      expect { nerve.run }.not_to raise_error
+    end
+
+    it "triggers config reload when overlay file is removed" do
+      nerve = Nerve::Nerve.new(mock_config_manager)
+
+      overlay_time = Time.now
+      iterations = 2
+
+      expect(nerve).to receive(:heartbeat).exactly(iterations + 1).times do
+        if iterations == 2
+          expect(mock_config_manager).to receive(:overlay_mtime).and_return(overlay_time)
+        elsif iterations == 1
+          expect(mock_config_manager).to receive(:overlay_mtime).and_return(nil)
+        else
+          $EXIT = true
+        end
+        iterations -= 1
+      end
+
+      # Constructor sets @config_to_load = true -> 1 reload.
+      # Overlay mtime appears (nil -> overlay_time) -> 1 reload.
+      # Overlay mtime disappears (overlay_time -> nil) -> 1 reload.
+      # Total: 3 reloads during run.
+      expect(mock_config_manager).to receive(:reload!).exactly(3).times
+
+      expect { nerve.run }.not_to raise_error
+    end
+
+    it "does not reload when overlay mtime is unchanged" do
+      nerve = Nerve::Nerve.new(mock_config_manager)
+
+      overlay_time = Time.now
+      iterations = 2
+
+      expect(nerve).to receive(:heartbeat).exactly(iterations + 1).times do
+        if iterations == 2
+          # After this heartbeat, next loop will see overlay_time
+          expect(mock_config_manager).to receive(:overlay_mtime).and_return(overlay_time)
+        elsif iterations == 1
+          # After this heartbeat, next loop will see same overlay_time (no change)
+          expect(mock_config_manager).to receive(:overlay_mtime).and_return(overlay_time)
+        else
+          $EXIT = true
+        end
+        iterations -= 1
+      end
+
+      # Constructor sets @config_to_load = true -> 1 reload.
+      # Overlay mtime appears (nil -> overlay_time) -> 1 reload.
+      # Overlay mtime unchanged (overlay_time -> overlay_time) -> no reload.
+      # Total: 2 reloads during run.
+      expect(mock_config_manager).to receive(:reload!).exactly(2).times
 
       expect { nerve.run }.not_to raise_error
     end

@@ -1,8 +1,11 @@
 require "yaml"
 require "optparse"
+require "nerve/log"
 
 module Nerve
   class ConfigurationManager
+    include Logging
+
     attr_reader :options
     attr_reader :config
 
@@ -12,13 +15,19 @@ module Nerve
       optparse = OptionParser.new do |opts|
         opts.banner = <<~EOB
           Welcome to nerve
-          
+
           Usage: nerve --config /path/to/nerve/config
         EOB
 
         options[:config] = ENV["NERVE_CONFIG"]
         opts.on("-c config", "--config config", String, "path to nerve config") do |key, value|
           options[:config] = key
+        end
+
+        options[:config_overlay] = ENV["NERVE_CONFIG_OVERLAY"]
+        opts.on("-o config_overlay", "--config-overlay config_overlay", String,
+          "path to overlay config (deep-merged on top of main config)") do |key, value|
+          options[:config_overlay] = key
         end
 
         options[:instance_id] = ENV["NERVE_INSTANCE_ID"]
@@ -63,7 +72,21 @@ module Nerve
         config["instance_id"] = options[:instance_id]
       end
 
+      if options[:config_overlay]
+        overlay = parse_overlay_file(options[:config_overlay])
+        config = deep_merge(config, overlay) if overlay
+      end
+
       config
+    end
+
+    def overlay_mtime
+      return nil unless @options && @options[:config_overlay]
+      begin
+        File.mtime(@options[:config_overlay])
+      rescue Errno::ENOENT
+        nil
+      end
     end
 
     def parse_config_file(filename)
@@ -83,6 +106,25 @@ module Nerve
     def reload!
       raise "You must parse command line options before reloading config" if @options.nil?
       @config = generate_nerve_config(@options)
+    end
+
+    private
+
+    def parse_overlay_file(path)
+      parse_config_file(path)
+    rescue ArgumentError => e
+      log.warn "nerve: overlay config not found at #{path}: #{e.message}"
+      nil
+    end
+
+    def deep_merge(base, overlay)
+      base.merge(overlay) do |_key, old_val, new_val|
+        if old_val.is_a?(Hash) && new_val.is_a?(Hash)
+          deep_merge(old_val, new_val)
+        else
+          new_val
+        end
+      end
     end
   end
 end

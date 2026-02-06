@@ -44,6 +44,7 @@ module Nerve
       # This decoupling is required for gracefully reloading config on SIGHUP
       # as one should do as little as possible in a signal handler
       @config_to_load = true
+      @last_overlay_mtime = nil
 
       Signal.trap("HUP") do
         @config_to_load = true
@@ -90,6 +91,14 @@ module Nerve
 
       statsd.time("nerve.main_loop.elapsed_time") do
         until $EXIT
+          # Poll overlay file mtime to detect config changes without SIGHUP
+          current_overlay_mtime = @config_manager.overlay_mtime
+          if current_overlay_mtime != @last_overlay_mtime
+            log.info "nerve: overlay config changed, triggering reload"
+            @config_to_load = true
+            @last_overlay_mtime = current_overlay_mtime
+          end
+
           # Check if configuration needs to be reloaded and reconcile any new
           # configuration of watchers with old configuration
           if @config_to_load
