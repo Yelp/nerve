@@ -48,6 +48,7 @@ class Nerve::Reporter
           statsd.increment("nerve.reporter.zk.client.created", tags: ["zk_cluster:#{@zk_cluster}"])
         end
         @zk = @@zk_pool[@zk_connection_string]
+        prom_set(:zk_pool_size, @@zk_pool_count[@zk_connection_string], labels: {zk_cluster: @zk_cluster})
         log.info "nerve: retrieved zk connection to #{@zk_connection_string}"
       }
     end
@@ -57,6 +58,7 @@ class Nerve::Reporter
     ensure
       @@zk_pool_lock.synchronize {
         @@zk_pool_count[@zk_connection_string] -= 1
+        prom_set(:zk_pool_size, @@zk_pool_count[@zk_connection_string], labels: {zk_cluster: @zk_cluster})
         # Last thread to use the connection closes it
         if @@zk_pool_count[@zk_connection_string] == 0
           log.info "nerve: closing zk connection to #{@zk_connection_string}"
@@ -72,12 +74,14 @@ class Nerve::Reporter
     def report_up
       if !@zk.connected?
         log.error "nerve: error in reporting up on zk node #{@full_key}: loss connection"
+        prom_inc(:zk_write_failures_total, labels: {zk_cluster: @zk_cluster, operation: "save"})
         false
       else
         begin
           zk_save
         rescue *ZK_CONNECTION_ERRORS => e
           log.error "nerve: error in reporting up on zk node #{@full_key}: #{e.message}"
+          prom_inc(:zk_write_failures_total, labels: {zk_cluster: @zk_cluster, operation: "save"})
           return false
         end
 
@@ -88,12 +92,14 @@ class Nerve::Reporter
     def report_down
       if !@zk.connected?
         log.error "nerve: error in reporting down on zk node #{@full_key}: loss connection"
+        prom_inc(:zk_write_failures_total, labels: {zk_cluster: @zk_cluster, operation: "delete"})
         false
       else
         begin
           zk_delete
         rescue *ZK_CONNECTION_ERRORS => e
           log.error "nerve: error in reporting down on zk node #{@full_key}: #{e.message}"
+          prom_inc(:zk_write_failures_total, labels: {zk_cluster: @zk_cluster, operation: "delete"})
           return false
         end
 
@@ -104,12 +110,15 @@ class Nerve::Reporter
     def ping?
       if !@zk.connected?
         log.error "nerve: error in ping reporter at zk node #{@full_key}: loss connection"
+        prom_set(:zk_connected, 0, labels: {zk_cluster: @zk_cluster})
         false
       else
+        prom_set(:zk_connected, 1, labels: {zk_cluster: @zk_cluster})
         begin
           @zk.exists?(@full_key || "/")
         rescue *ZK_CONNECTION_ERRORS => e
           log.error "nerve: error in ping reporter at zk node #{@full_key}: #{e.message}"
+          prom_set(:zk_connected, 0, labels: {zk_cluster: @zk_cluster})
           false
         end
       end
@@ -142,9 +151,11 @@ class Nerve::Reporter
       if @full_key
         log.info "nerve: deleting zk node at #{@full_key}" if @full_key
 
+        prom_start = Time.now
         statsd.time("nerve.reporter.zk.delete.elapsed_time", tags: ["zk_cluster:#{@zk_cluster}"]) do
           @zk.delete(@full_key, ignore: :no_node)
         end
+        prom_observe(:zk_operation_duration_seconds, Time.now - prom_start, labels: {zk_cluster: @zk_cluster, operation: "delete"})
         @full_key = nil
       else
         log.error "Failed to delete node at: #{@zk_path} because we don't have the full_path."
@@ -155,20 +166,24 @@ class Nerve::Reporter
       log.info "nerve: creating zk node at #{@key_prefix}"
 
       # only mkdir_p if the path does not exist
+      prom_start = Time.now
       statsd.time("nerve.reporter.zk.create.elapsed_time", tags: ["zk_cluster:#{@zk_cluster}", "zk_path:#{@zk_path}"]) do
         @zk.mkdir_p(@zk_path) unless @zk.exists?(@zk_path)
         @full_key = @zk.create(@key_prefix, data: @data, mode: :ephemeral_sequential)
       end
+      prom_observe(:zk_operation_duration_seconds, Time.now - prom_start, labels: {zk_cluster: @zk_cluster, operation: "create"})
     end
 
     def zk_save
       return zk_create unless @full_key
 
       begin
+        prom_start = Time.now
         statsd.time("nerve.reporter.zk.save.elapsed_time", tags: ["zk_cluster:#{@zk_cluster}"]) do
           log.info "nerve: updating zk node at #{@key_prefix}"
           @zk.set(@full_key, @data)
         end
+        prom_observe(:zk_operation_duration_seconds, Time.now - prom_start, labels: {zk_cluster: @zk_cluster, operation: "save"})
       rescue ZK::Exceptions::NoNode
         zk_create
       end

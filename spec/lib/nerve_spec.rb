@@ -11,6 +11,7 @@ def make_mock_service_watcher
   allow(mock_service_watcher).to receive(:stop)
   allow(mock_service_watcher).to receive(:alive?).and_return(true)
   allow(mock_service_watcher).to receive(:was_up).and_return(true)
+  allow(mock_service_watcher).to receive(:repeated_report_failures).and_return(0)
   mock_service_watcher
 end
 
