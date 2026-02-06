@@ -10,6 +10,7 @@ module Nerve
     include Utils
     include Logging
     include StatsD
+    include PrometheusMetrics
 
     attr_reader :was_up
 

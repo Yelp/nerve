@@ -7,6 +7,7 @@ require "nerve/version"
 require "nerve/utils"
 require "nerve/log"
 require "nerve/statsd"
+require "nerve/prometheus_metrics"
 require "nerve/ring_buffer"
 require "nerve/reporter"
 require "nerve/service_watcher"
@@ -16,6 +17,7 @@ module Nerve
     include Logging
     include Utils
     include StatsD
+    include PrometheusMetrics
 
     MAIN_LOOP_SLEEP_S = 10
     LAUNCH_WAIT_FOR_REPORT_S = 30
@@ -152,6 +154,11 @@ module Nerve
             break
           end
 
+          unless @prometheus_started
+            PrometheusMetrics.configure(@config_manager.config["prometheus"] || {})
+            @prometheus_started = true
+          end
+
           # Check that watchers are still alive, auto-remediate if they
           # are not. Sometimes zookeeper flakes out or connections are lost to
           # remote datacenter zookeeper clusters, failing is not an option
@@ -196,6 +203,7 @@ module Nerve
       statsd.increment("nerve.stop", tags: ["stop_avenue:clean", "stop_location:main_loop"])
     ensure
       $EXIT = true
+      PrometheusMetrics.stop_server
     end
 
     def heartbeat

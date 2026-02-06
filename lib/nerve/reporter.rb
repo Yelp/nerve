@@ -1,5 +1,7 @@
 require "nerve/utils"
 require "nerve/log"
+require "nerve/statsd"
+require "nerve/prometheus_metrics"
 require "nerve/reporter/base"
 
 module Nerve
