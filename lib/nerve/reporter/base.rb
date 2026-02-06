@@ -3,6 +3,7 @@ class Nerve::Reporter
     include Nerve::Utils
     include Nerve::Logging
     include Nerve::StatsD
+    include Nerve::PrometheusMetrics
 
     def initialize(opts)
     end

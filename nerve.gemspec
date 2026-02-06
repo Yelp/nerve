@@ -25,6 +25,8 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency "redis", "~> 5.0"
   gem.add_runtime_dependency "etcd", "~> 0.3"
   gem.add_runtime_dependency "dogstatsd-ruby", "~> 5.0"
+  gem.add_runtime_dependency "prometheus-client", "~> 4.0"
+  gem.add_runtime_dependency "webrick"
 
   gem.add_development_dependency "rake"
   gem.add_development_dependency "rspec", "~> 3.13"
