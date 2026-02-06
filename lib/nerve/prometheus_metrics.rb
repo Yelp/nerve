@@ -87,12 +87,27 @@ module Nerve
           :nerve_repeated_report_failures_max,
           docstring: "Worst-case repeated report failure count across all watchers"
         )
+        @@prom_metrics[:zk_connected] = @@prom_registry.gauge(
+          :nerve_zk_connected,
+          docstring: "Whether ZK connection is alive (1=connected, 0=disconnected)",
+          labels: [:zk_cluster]
+        )
+        @@prom_metrics[:zk_pool_size] = @@prom_registry.gauge(
+          :nerve_zk_pool_size,
+          docstring: "Number of watchers sharing each ZK connection pool",
+          labels: [:zk_cluster]
+        )
 
         # Counters
         @@prom_metrics[:report_results_total] = @@prom_registry.counter(
           :nerve_report_results_total,
           docstring: "Total report up/down attempts and results",
           labels: [:action, :result]
+        )
+        @@prom_metrics[:zk_write_failures_total] = @@prom_registry.counter(
+          :nerve_zk_write_failures_total,
+          docstring: "Total ZK write failures (primary alerting metric)",
+          labels: [:zk_cluster, :operation]
         )
         @@prom_metrics[:reporter_ping_results_total] = @@prom_registry.counter(
           :nerve_reporter_ping_results_total,
@@ -119,6 +134,12 @@ module Nerve
         )
 
         # Histograms
+        @@prom_metrics[:zk_operation_duration_seconds] = @@prom_registry.histogram(
+          :nerve_zk_operation_duration_seconds,
+          docstring: "Duration of ZK operations in seconds",
+          labels: [:zk_cluster, :operation],
+          buckets: zk_buckets
+        )
         @@prom_metrics[:main_loop_duration_seconds] = @@prom_registry.histogram(
           :nerve_main_loop_duration_seconds,
           docstring: "Duration of main loop iterations in seconds",
@@ -171,6 +192,13 @@ module Nerve
       metric = PrometheusMetrics.metrics[metric_name]
       return unless metric
       metric.observe(value, labels: labels)
+    end
+
+    def prom_time(metric_name, labels: {})
+      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      result = yield
+      prom_observe(metric_name, Process.clock_gettime(Process::CLOCK_MONOTONIC) - start, labels: labels)
+      result
     end
   end
 end

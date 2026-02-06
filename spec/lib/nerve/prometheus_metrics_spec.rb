@@ -58,16 +58,20 @@ describe Nerve::PrometheusMetrics do
       expect(metrics[:watchers_up]).to be_a(Prometheus::Client::Gauge)
       expect(metrics[:watchers_down]).to be_a(Prometheus::Client::Gauge)
       expect(metrics[:repeated_report_failures_max]).to be_a(Prometheus::Client::Gauge)
+      expect(metrics[:zk_connected]).to be_a(Prometheus::Client::Gauge)
+      expect(metrics[:zk_pool_size]).to be_a(Prometheus::Client::Gauge)
 
       # Counters
       expect(metrics[:report_results_total]).to be_a(Prometheus::Client::Counter)
       expect(metrics[:reporter_ping_results_total]).to be_a(Prometheus::Client::Counter)
+      expect(metrics[:zk_write_failures_total]).to be_a(Prometheus::Client::Counter)
       expect(metrics[:watcher_stops_total]).to be_a(Prometheus::Client::Counter)
       expect(metrics[:watcher_launches_total]).to be_a(Prometheus::Client::Counter)
       expect(metrics[:watcher_throttled_total]).to be_a(Prometheus::Client::Counter)
       expect(metrics[:config_reloads_total]).to be_a(Prometheus::Client::Counter)
 
       # Histograms
+      expect(metrics[:zk_operation_duration_seconds]).to be_a(Prometheus::Client::Histogram)
       expect(metrics[:main_loop_duration_seconds]).to be_a(Prometheus::Client::Histogram)
 
       # Info
@@ -80,6 +84,7 @@ describe Nerve::PrometheusMetrics do
         "histogram_buckets_main_loop" => [0.1, 1.0, 10.0]
       )
       metrics = Nerve::PrometheusMetrics.metrics
+      expect(metrics[:zk_operation_duration_seconds]).to be_a(Prometheus::Client::Histogram)
       expect(metrics[:main_loop_duration_seconds]).to be_a(Prometheus::Client::Histogram)
     end
 
@@ -131,6 +136,22 @@ describe Nerve::PrometheusMetrics do
       instance.prom_observe(:main_loop_duration_seconds, 0.5)
       metric = Nerve::PrometheusMetrics.metrics[:main_loop_duration_seconds]
       expect(metric.get["sum"]).to eq(0.5)
+    end
+
+    it "prom_time records duration and returns the block result" do
+      allow(Process).to receive(:clock_gettime)
+        .with(Process::CLOCK_MONOTONIC)
+        .and_return(10.0, 12.5)
+
+      result = instance.prom_time(
+        :zk_operation_duration_seconds,
+        labels: {zk_cluster: "zk", operation: "save"}
+      ) { :ok }
+
+      metric = Nerve::PrometheusMetrics.metrics[:zk_operation_duration_seconds]
+      expect(metric.get(labels: {zk_cluster: "zk", operation: "save"})["sum"])
+        .to be_within(0.0001).of(2.5)
+      expect(result).to eq(:ok)
     end
 
     it "prom_inc ignores unknown metrics" do
