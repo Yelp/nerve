@@ -84,6 +84,7 @@ module Nerve
       @heartbeat_path = config["heartbeat_path"]
       StatsD.configure_statsd(config["statsd"] || {})
       statsd.increment("nerve.config.update")
+      prom_inc(:config_reloads_total)
     end
 
     def run
@@ -92,6 +93,8 @@ module Nerve
 
       statsd.time("nerve.main_loop.elapsed_time") do
         until $EXIT
+          main_loop_start = Time.now
+
           # Check if configuration needs to be reloaded and reconcile any new
           # configuration of watchers with old configuration
           if @config_to_load
@@ -119,6 +122,7 @@ module Nerve
               log.info "nerve: launching new watchers: #{services_to_launch}"
               services_to_launch.each do |name|
                 statsd.increment("nerve.watcher.launch", tags: ["launch_reason:new", "watcher_name:#{name}"])
+                prom_inc(:watcher_launches_total, labels: {reason: "new"})
                 launch_watcher(name, @watchers_desired[name])
               end
             end
@@ -141,6 +145,7 @@ module Nerve
               @watcher_versions[temp_name] = @watcher_versions.delete(name)
               log.info "nerve: launching new watcher for #{name}"
               statsd.increment("nerve.watcher.launch", tags: ["launch_reason:update", "watcher_name:#{name}"])
+              prom_inc(:watcher_launches_total, labels: {reason: "update"})
               launch_watcher(name, @watchers_desired[name], wait: true)
               log.info "nerve: reaping old watcher #{temp_name}"
               statsd.increment("nerve.watcher.reap", tags: ["reap_reason:update", "watcher_name:#{temp_name}"])
@@ -179,12 +184,16 @@ module Nerve
               statsd.increment("nerve.watcher.reap", tags: ["reap_reason:relaunch", "reap_result:fail", "watcher_name:#{name}", "exception_name:#{e.class.name}", "exception_message:#{e.message}"])
             end
             statsd.increment("nerve.watcher.launch", tags: ["launch_reason:relaunch", "watcher_name:#{name}"])
+            prom_inc(:watcher_launches_total, labels: {reason: "relaunch"})
             launch_watcher(name, @watchers_desired[name])
           end
+
+          update_prom_gauges
 
           # Indicate we've made progress
           heartbeat
 
+          prom_observe(:main_loop_duration_seconds, Time.now - main_loop_start)
           responsive_sleep(MAIN_LOOP_SLEEP_S) { @config_to_load || $EXIT }
         end
       rescue => e
@@ -254,6 +263,33 @@ module Nerve
       shutdown_status = watcher.stop
       log.info "nerve: stopped #{name}, clean shutdown? #{shutdown_status}"
       shutdown_status
+    end
+
+    def update_prom_gauges
+      return unless PrometheusMetrics.enabled?
+
+      prom_set(:watchers_desired, @watchers_desired.size)
+      prom_set(:watchers_running, @watchers.size)
+
+      up_count = 0
+      down_count = 0
+      max_failures = 0
+
+      @watchers.each do |_name, watcher|
+        case watcher.was_up
+        when true
+          up_count += 1
+        when false
+          down_count += 1
+        end
+
+        failures = watcher.repeated_report_failures
+        max_failures = failures if failures > max_failures
+      end
+
+      prom_set(:watchers_up, up_count)
+      prom_set(:watchers_down, down_count)
+      prom_set(:repeated_report_failures_max, max_failures)
     end
   end
 end

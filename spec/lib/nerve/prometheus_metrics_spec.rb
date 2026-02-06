@@ -48,6 +48,41 @@ describe Nerve::PrometheusMetrics do
       expect(Nerve::PrometheusMetrics.registry).to be_a(Prometheus::Client::Registry)
     end
 
+    it "registers all expected metrics" do
+      configure_without_server
+      metrics = Nerve::PrometheusMetrics.metrics
+
+      # Gauges
+      expect(metrics[:watchers_desired]).to be_a(Prometheus::Client::Gauge)
+      expect(metrics[:watchers_running]).to be_a(Prometheus::Client::Gauge)
+      expect(metrics[:watchers_up]).to be_a(Prometheus::Client::Gauge)
+      expect(metrics[:watchers_down]).to be_a(Prometheus::Client::Gauge)
+      expect(metrics[:repeated_report_failures_max]).to be_a(Prometheus::Client::Gauge)
+
+      # Counters
+      expect(metrics[:report_results_total]).to be_a(Prometheus::Client::Counter)
+      expect(metrics[:reporter_ping_results_total]).to be_a(Prometheus::Client::Counter)
+      expect(metrics[:watcher_stops_total]).to be_a(Prometheus::Client::Counter)
+      expect(metrics[:watcher_launches_total]).to be_a(Prometheus::Client::Counter)
+      expect(metrics[:watcher_throttled_total]).to be_a(Prometheus::Client::Counter)
+      expect(metrics[:config_reloads_total]).to be_a(Prometheus::Client::Counter)
+
+      # Histograms
+      expect(metrics[:main_loop_duration_seconds]).to be_a(Prometheus::Client::Histogram)
+
+      # Info
+      expect(metrics[:build_info]).to be_a(Prometheus::Client::Gauge)
+    end
+
+    it "accepts custom histogram buckets" do
+      configure_without_server(
+        "histogram_buckets_zk" => [0.01, 0.1, 1.0],
+        "histogram_buckets_main_loop" => [0.1, 1.0, 10.0]
+      )
+      metrics = Nerve::PrometheusMetrics.metrics
+      expect(metrics[:main_loop_duration_seconds]).to be_a(Prometheus::Client::Histogram)
+    end
+
     it "sets build_info with version" do
       configure_without_server
       metric = Nerve::PrometheusMetrics.metrics[:build_info]
@@ -72,6 +107,30 @@ describe Nerve::PrometheusMetrics do
   describe "instance helpers when enabled" do
     before(:each) do
       configure_without_server
+    end
+
+    it "prom_inc increments a counter" do
+      instance.prom_inc(:config_reloads_total)
+      metric = Nerve::PrometheusMetrics.metrics[:config_reloads_total]
+      expect(metric.get).to eq(1.0)
+
+      instance.prom_inc(:config_reloads_total)
+      expect(metric.get).to eq(2.0)
+    end
+
+    it "prom_set sets a gauge" do
+      instance.prom_set(:watchers_desired, 5)
+      metric = Nerve::PrometheusMetrics.metrics[:watchers_desired]
+      expect(metric.get).to eq(5)
+
+      instance.prom_set(:watchers_desired, 3)
+      expect(metric.get).to eq(3)
+    end
+
+    it "prom_observe records a histogram observation" do
+      instance.prom_observe(:main_loop_duration_seconds, 0.5)
+      metric = Nerve::PrometheusMetrics.metrics[:main_loop_duration_seconds]
+      expect(metric.get["sum"]).to eq(0.5)
     end
 
     it "prom_inc ignores unknown metrics" do
