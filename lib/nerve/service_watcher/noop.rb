@@ -11,7 +11,6 @@ module Nerve
       end
     end
 
-    CHECKS ||= {}
     CHECKS["noop"] = NoopServiceCheck
   end
 end

@@ -50,7 +50,6 @@ module Nerve
       end
     end
 
-    CHECKS ||= {}
     CHECKS["tcp"] = TcpServiceCheck
   end
 end

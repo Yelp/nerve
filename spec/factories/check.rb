@@ -10,7 +10,7 @@ FactoryBot.define do
       uri { "/health" }
     end
 
-    initialize_with { Hash[attributes.map { |k, v| [k.to_s, v] }] }
+    initialize_with { attributes.map { |k, v| [k.to_s, v] }.to_h }
     to_create {}
   end
 end

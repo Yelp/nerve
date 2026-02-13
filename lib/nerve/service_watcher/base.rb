@@ -58,7 +58,7 @@ module Nerve
       end
     end
 
-    CHECKS ||= {}
+    CHECKS = {}
     CHECKS["base"] = BaseServiceCheck
   end
 end

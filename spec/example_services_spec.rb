@@ -9,7 +9,7 @@ end
 
 describe "example services are valid" do
   Dir.foreach("#{File.dirname(__FILE__)}/../example/nerve_services") do |item|
-    next if item == "." or item == ".."
+    next if item == "." || item == ".."
     service_data = JSON.parse(IO.read("#{File.dirname(__FILE__)}/../example/nerve_services/#{item}"))
     service_data["name"] = item.gsub(/\.json$/, "")
     service_data["instance_id"] = "1"

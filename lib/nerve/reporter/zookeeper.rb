@@ -118,7 +118,7 @@ class Nerve::Reporter
     private
 
     def host_list_to_cluster(list)
-      first_host = list.sort.first
+      first_host = list.min
       first_token = first_host.split(".").first
       # extract cluster name by filtering name of first host
       # remove domain extents and trailing numbers

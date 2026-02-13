@@ -20,7 +20,7 @@ FactoryBot.define do
     end
 
     # thanks to https://stackoverflow.com/questions/10032760
-    initialize_with { Hash[attributes.map { |k, v| [k.to_s, v] }] }
+    initialize_with { attributes.map { |k, v| [k.to_s, v] }.to_h }
     to_create {}
   end
 end

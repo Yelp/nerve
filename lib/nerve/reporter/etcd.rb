@@ -53,7 +53,7 @@ class Nerve::Reporter
     private
 
     def etcd_delete
-      return unless @etcd and @key
+      return unless @etcd && @key
       begin
         @etcd.delete(@key)
       rescue ::Etcd::NotFile

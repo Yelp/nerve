@@ -12,7 +12,7 @@ module Nerve
       optparse = OptionParser.new do |opts|
         opts.banner = <<~EOB
           Welcome to nerve
-          
+
           Usage: nerve --config /path/to/nerve/config
         EOB
 

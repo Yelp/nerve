@@ -38,7 +38,7 @@ module Nerve
 
         # Any 2xx or 3xx code should be considered healthy. This is standard
         # practice in HAProxy, nginx, etc ...
-        if code >= 200 and code < 400 and (@expect.nil? || body.include?(@expect))
+        if code >= 200 && code < 400 && (@expect.nil? || body.include?(@expect))
           log.debug "nerve: check #{@name} got response code #{code} with body \"#{body}\""
           true
         else
@@ -64,7 +64,6 @@ module Nerve
       end
     end
 
-    CHECKS ||= {}
     CHECKS["http"] = HttpServiceCheck
   end
 end

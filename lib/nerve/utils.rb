@@ -8,7 +8,7 @@ module Nerve
     def responsive_sleep(seconds, tick = 1, &should_exit)
       nap_time = seconds
       while nap_time > 0
-        break if should_exit && should_exit.call
+        break if should_exit&.call
         sleep [nap_time, tick].min
         nap_time -= tick
       end

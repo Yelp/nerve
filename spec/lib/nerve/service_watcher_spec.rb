@@ -76,7 +76,7 @@ describe Nerve::ServiceWatcher do
           allow(service_watcher).to receive(:check?).and_return(true)
 
           # 100 is maximum burst
-          for _ in 0..100
+          101.times do
             service_watcher.check_and_report
             service_watcher.instance_variable_set(:@was_up, false)
           end
@@ -131,7 +131,7 @@ describe Nerve::ServiceWatcher do
           allow(reporter).to receive(:ping?).and_return(true)
           allow(service_watcher).to receive(:check?) { rand >= 0.5 }
 
-          for _ in 0..100
+          101.times do
             service_watcher.check_and_report
           end
         }
@@ -150,7 +150,7 @@ describe Nerve::ServiceWatcher do
           allow(reporter).to receive(:ping?).and_return(true)
           allow(service_watcher).to receive(:check?).and_return(true)
 
-          for _ in 0..100
+          101.times do
             service_watcher.check_and_report
           end
         }
@@ -174,7 +174,7 @@ describe Nerve::ServiceWatcher do
       end
 
       it "does not throttle" do
-        for _ in 0..100 do
+        101.times do
           expect(service_watcher.check_and_report).not_to be nil
         end
       end
@@ -189,7 +189,7 @@ describe Nerve::ServiceWatcher do
         allow(reporter).to receive(:ping?).and_return(true)
         allow(service_watcher).to receive(:check?) { rand >= 0.5 }
 
-        for _ in 0..100
+        101.times do
           service_watcher.check_and_report
         end
       }
@@ -216,10 +216,10 @@ describe Nerve::ServiceWatcher do
     let(:check_interval) { 0 }
     let(:service_watcher) { Nerve::ServiceWatcher.new(build(:service, check_interval: check_interval)) }
     let(:reporter) { service_watcher.instance_variable_get(:@reporter) }
-    before { $EXIT = false }
+    before { ::Nerve.reset_exit! }
 
     it "starts the reporter" do
-      $EXIT = true
+      ::Nerve.exit!
       expect(reporter).to receive(:start)
       service_watcher.run
     end
@@ -230,7 +230,7 @@ describe Nerve::ServiceWatcher do
       # expect it to be called twice
       expect(service_watcher).to receive(:check_and_report).twice do
         # on the second call, set exit to true
-        $EXIT = true if count == 1
+        ::Nerve.exit! if count == 1
         count += 1
       end
 
@@ -242,7 +242,7 @@ describe Nerve::ServiceWatcher do
 
       it "still exits quickly during nap time" do
         expect(service_watcher).to receive(:check_and_report) do
-          $EXIT = true
+          ::Nerve.exit!
         end
 
         expect { Timeout.timeout(1) { service_watcher.run } }.not_to raise_error
@@ -262,7 +262,7 @@ describe Nerve::ServiceWatcher do
         count = 0
 
         expect(service_watcher).to receive(:check_and_report).exactly(101).times do
-          $EXIT = true if count == 100
+          ::Nerve.exit! if count == 100
           count += 1
           # so that check_and_report returns 9 false followed by 1 true and repeats the sequence
           count % 10 == 9

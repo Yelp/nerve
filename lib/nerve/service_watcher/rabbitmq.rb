@@ -29,7 +29,7 @@ module Nerve
           port: @port,
           user: @user,
           pass: @pass,
-          log_file: STDERR,
+          log_file: $stderr,
           continuation_timeout: @timeout,
           automatically_recover: false,
           heartbeat: false,
@@ -62,7 +62,6 @@ module Nerve
       end
     end
 
-    CHECKS ||= {}
     CHECKS["rabbitmq"] = RabbitMQServiceCheck
   end
 end

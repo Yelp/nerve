@@ -1,7 +1,7 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-unless ENV["COOKBOOK_DIR"] and ENV["DATA_BAG_DIR"]
+unless ENV["COOKBOOK_DIR"] && ENV["DATA_BAG_DIR"]
   warn "you need to set COOKBOOK_DIR and DATA_BAG_DIR as environment variables"
   Kernel.exit 1
 end
