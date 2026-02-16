@@ -99,6 +99,20 @@ describe Nerve::Nerve do
       expect { nerve.run }.not_to raise_error
     end
 
+    it "records main loop duration using a monotonic clock" do
+      nerve = Nerve::Nerve.new(mock_config_manager)
+
+      allow(nerve).to receive(:monotonic_time).and_return(10.0, 12.5)
+
+      expect(nerve).to receive(:prom_observe)
+        .with(:main_loop_duration_seconds, 2.5)
+      expect(nerve).to receive(:heartbeat) {
+        $EXIT = true
+      }
+
+      expect { nerve.run }.not_to raise_error
+    end
+
     it "enables prometheus after reload when initially disabled" do
       allow(Nerve::PrometheusMetrics).to receive(:start_server)
       reset_prometheus_state!
