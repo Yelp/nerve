@@ -68,13 +68,13 @@ module Nerve
         cfiles.each { |x| config["services"][File.basename(x[/(.*)\.(yaml|json)$/, 1])] = parse_config_file(x) }
       end
 
-      if options[:instance_id] && !options[:instance_id].empty?
-        config["instance_id"] = options[:instance_id]
-      end
-
       if options[:config_overlay]
         overlay = parse_overlay_file(options[:config_overlay])
         config = deep_merge(config, overlay) if overlay
+      end
+
+      if options[:instance_id] && !options[:instance_id].empty?
+        config["instance_id"] = options[:instance_id]
       end
 
       config

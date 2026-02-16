@@ -96,7 +96,7 @@ describe Nerve::ConfigurationManager do
       })
     end
 
-    it "instance_id flag still wins over overlay when set" do
+    it "instance_id flag wins over overlay when set" do
       overlay_path = File.join(tmpdir, "overlay.json")
       File.write(overlay_path, JSON.generate({
         "instance_id" => "overlay_instance"
@@ -113,8 +113,8 @@ describe Nerve::ConfigurationManager do
       config_manager.parse_options!
       config_manager.reload!
 
-      # Overlay is applied after instance_id flag, so overlay wins
-      expect(config_manager.config["instance_id"]).to eq("overlay_instance")
+      # Overlay is applied before instance_id flag, so flag wins
+      expect(config_manager.config["instance_id"]).to eq(nerve_instance_id)
     end
 
     it "loads config without error when overlay file is missing" do
