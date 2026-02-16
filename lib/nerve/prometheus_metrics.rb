@@ -170,6 +170,9 @@ module Nerve
         end
 
         Thread.new { @@prom_server.start }
+      rescue Errno::EADDRINUSE, Errno::EACCES => e
+        log.error "nerve: prometheus metrics failed to bind to #{bind}:#{port} (#{e.class}: #{e.message})"
+        raise
       end
     end
 
