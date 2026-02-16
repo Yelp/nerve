@@ -169,14 +169,36 @@ describe Nerve::PrometheusMetrics do
 
   describe "HTTP server" do
     it "serves /metrics endpoint" do
-      Nerve::PrometheusMetrics.configure({"enabled" => true, "port" => 19297})
+      Nerve::PrometheusMetrics.configure({
+        "enabled" => true,
+        "bind" => "127.0.0.1",
+        "port" => 0
+      })
       sleep 0.2
 
+      server = Nerve::PrometheusMetrics.class_variable_get(:@@prom_server)
+      port = server.listeners.first.addr[1]
+
       require "net/http"
-      response = Net::HTTP.get_response("127.0.0.1", "/metrics", 19297)
+      response = Net::HTTP.get_response("127.0.0.1", "/metrics", port)
       expect(response.code).to eq("200")
       expect(response["content-type"]).to include("text/plain")
       expect(response.body).to include("nerve_build_info")
+    end
+
+    it "fails fast when the port is already in use" do
+      server = TCPServer.new("127.0.0.1", 0)
+      port = server.addr[1]
+
+      expect {
+        Nerve::PrometheusMetrics.configure({
+          "enabled" => true,
+          "bind" => "127.0.0.1",
+          "port" => port
+        })
+      }.to raise_error(Errno::EADDRINUSE)
+    ensure
+      server&.close
     end
   end
 
