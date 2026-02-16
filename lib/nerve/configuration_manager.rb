@@ -111,8 +111,12 @@ module Nerve
     private
 
     def parse_overlay_file(path)
-      parse_config_file(path)
-    rescue ArgumentError => e
+      if File.read(path).strip.empty?
+        {}
+      else
+        parse_config_file(path)
+      end
+    rescue Errno::ENOENT, Errno::EACCES, ArgumentError => e
       log.warn "nerve: overlay config not found at #{path}: #{e.message}"
       nil
     end
