@@ -132,6 +132,24 @@ describe Nerve::ConfigurationManager do
       expect(config_manager.config["instance_id"]).to eq(nerve_instance_id)
     end
 
+    it "loads config without error when overlay file is blank" do
+      overlay_path = File.join(tmpdir, "overlay.json")
+      File.write(overlay_path, "")
+
+      allow(config_manager).to receive(:parse_options_from_argv!) {
+        {
+          config: nerve_config,
+          instance_id: nerve_instance_id,
+          check_config: false,
+          config_overlay: overlay_path
+        }
+      }
+      config_manager.parse_options!
+
+      expect { config_manager.reload! }.not_to raise_error
+      expect(config_manager.config["instance_id"]).to eq(nerve_instance_id)
+    end
+
     it "loads config without overlay when config_overlay is nil" do
       allow(config_manager).to receive(:parse_options_from_argv!) {
         {
