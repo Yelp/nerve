@@ -8,6 +8,7 @@ endif
 DOCKER_IMAGE := $(DOCKER_REGISTRY)nerve-dev
 RUBY_VERSION := 3.2
 VENV := .venv
+BUNDLE := rbenv exec bundle
 
 .PHONY: help
 help: ## Show this help
@@ -27,17 +28,21 @@ setup-docker: ## Build Docker development image
 
 .PHONY: setup-local
 setup-local: $(VENV) ## Install dependencies locally via bundler
-	bundle install
-	$(VENV)/bin/pre-commit install
+	$(BUNDLE) install
+	$(MAKE) hooks
 
 $(VENV): ## Create Python venv for pre-commit
 	python3 -m venv $(VENV)
 	$(VENV)/bin/pip install pre-commit
 
+.PHONY: hooks
+hooks: $(VENV) ## Install pre-commit hooks
+	$(VENV)/bin/pre-commit install
+
 .PHONY: test
 test: ## Run test suite
-	@if [ -f Gemfile.lock ] && bundle check >/dev/null 2>&1; then \
-		bundle exec rspec; \
+	@if [ -f Gemfile.lock ] && $(BUNDLE) check >/dev/null 2>&1; then \
+		$(BUNDLE) exec rspec; \
 	else \
 		$(MAKE) test-docker; \
 	fi
@@ -48,16 +53,16 @@ test-docker: ## Run tests in Docker container
 
 .PHONY: lint
 lint: ## Check code style with StandardRB
-	bundle exec standardrb
+	$(BUNDLE) exec standardrb
 
 .PHONY: fix
 fix: ## Auto-fix code style issues
-	bundle exec standardrb --fix
+	$(BUNDLE) exec standardrb --fix
 
 .PHONY: console
 console: ## Start interactive Ruby console
-	@if bundle check >/dev/null 2>&1; then \
-		bundle exec pry -r ./lib/nerve; \
+	@if $(BUNDLE) check >/dev/null 2>&1; then \
+		$(BUNDLE) exec pry -r ./lib/nerve; \
 	else \
 		docker run --rm -it $(DOCKER_IMAGE) bundle exec pry -r ./lib/nerve; \
 	fi

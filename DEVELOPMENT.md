@@ -53,10 +53,10 @@ make fix   # Auto-fix violations
 Install pre-commit hooks to auto-format code on commit:
 
 ```bash
-pre-commit install
+make hooks
 ```
 
-See `.pre-commit-config.yaml` for the list of hooks.
+This uses the repo's `.venv` for pre-commit. If you already have `pre-commit` on your PATH, `pre-commit install` also works. See `.pre-commit-config.yaml` for the list of hooks.
 
 ## Running Nerve Locally
 

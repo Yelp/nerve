@@ -11,7 +11,7 @@ repos:
     hooks:
       - id: standardrb
         name: StandardRB
-        entry: bundle exec standardrb --fix
+        entry: rbenv exec bundle exec standardrb --fix
         language: system
         types: [ruby]
         pass_filenames: true
