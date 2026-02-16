@@ -47,7 +47,7 @@ describe Nerve::RateLimiter do
         # Wait until there are enough tokens to hit the maximum burst
         travel(MAX_BURST / AVERAGE_RATE + 1)
 
-        for _ in 1..MAX_BURST do
+        MAX_BURST.times do
           expect(rate_limiter.consume).to be true
         end
       end
@@ -56,7 +56,7 @@ describe Nerve::RateLimiter do
         # Wait until there are enough tokens to hit the maximum burst
         travel(MAX_BURST / AVERAGE_RATE + 1)
 
-        for _ in 1..MAX_BURST do
+        MAX_BURST.times do
           rate_limiter.consume
         end
 
@@ -67,7 +67,7 @@ describe Nerve::RateLimiter do
     context "when all tokens are consumed" do
       before {
         # consume up to the maximum burst
-        for _ in 1..MAX_BURST do
+        MAX_BURST.times do
           rate_limiter.consume
         end
       }
@@ -91,7 +91,7 @@ describe Nerve::RateLimiter do
         travel_to Time.now
 
         # Should be able to consume more than the maximum burst
-        for _ in 1..(MAX_BURST * 2) do
+        (MAX_BURST * 2).times do
           expect(rate_limiter.consume).to be true
         end
       end
@@ -108,7 +108,7 @@ describe Nerve::RateLimiter do
       # Clear all existing tokens.
       while rate_limiter.consume do end
 
-      for period in 1..num_periods do
+      (1..num_periods).each do |period|
         travel 1
 
         while rate_limiter.consume

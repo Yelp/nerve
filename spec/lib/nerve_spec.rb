@@ -41,7 +41,7 @@ describe Nerve::Nerve do
 
   describe "full application run" do
     before(:each) {
-      $EXIT = false
+      ::Nerve.reset_exit!
 
       allow(Nerve::Reporter).to receive(:new_from_service) {
         mock_reporter
@@ -83,7 +83,7 @@ describe Nerve::Nerve do
       nerve = Nerve::Nerve.new(mock_config_manager)
 
       expect(nerve).to receive(:heartbeat) {
-        $EXIT = true
+        ::Nerve.exit!
       }
 
       expect { nerve.run }.not_to raise_error
@@ -108,7 +108,7 @@ describe Nerve::Nerve do
           expect(mock_service_watcher_one).to receive(:alive?).and_return(true)
           nerve.instance_variable_set(:@config_to_load, true)
         else
-          $EXIT = true
+          ::Nerve.exit!
         end
         iterations -= 1
       end
@@ -197,7 +197,7 @@ describe Nerve::Nerve do
           expect(nerve.instance_variable_get(:@watchers).keys).to contain_exactly("service1", "service4")
           nerve.instance_variable_set(:@config_to_load, true)
         else
-          $EXIT = true
+          ::Nerve.exit!
         end
         iterations -= 1
       end

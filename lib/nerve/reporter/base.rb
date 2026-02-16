@@ -34,7 +34,7 @@ class Nerve::Reporter
 
       # Weight is optional, but it should be well formed if supplied
       if service.has_key?("weight")
-        if service["weight"].to_i >= 0 and "#{service["weight"]}".match(/^\d+$/)
+        if service["weight"].to_i >= 0 && service["weight"].to_s.match(/^\d+$/)
           d["weight"] = service["weight"].to_i
         else
           raise ArgumentError, "invalid 'weight' argument in service data: #{service.inspect}"
@@ -54,7 +54,7 @@ class Nerve::Reporter
     protected
 
     def parse_data(data)
-      return data if data.class == String
+      return data if data.instance_of?(String)
       data.to_json
     end
   end

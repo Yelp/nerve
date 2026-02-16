@@ -13,7 +13,7 @@ module Nerve
       end
 
       def configure_logger_for(classname)
-        logger = Logger.new(STDERR)
+        logger = Logger.new($stderr)
         logger.level = Logger::INFO unless ENV["DEBUG"]
         logger.progname = classname
         logger

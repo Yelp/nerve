@@ -9,7 +9,7 @@ module Nerve
       reporter = begin
         require "nerve/reporter/#{type.downcase}"
         const_get(type.downcase.capitalize)
-      rescue Exception => e
+      rescue Exception => e # standard:disable Lint/RescueException
         raise ArgumentError, "specified a reporter_type of #{type}, which could not be found: #{e}"
       end
       reporter.new(service)

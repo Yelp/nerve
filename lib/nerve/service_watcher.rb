@@ -226,7 +226,7 @@ module Nerve
     private
 
     def watcher_should_exit?
-      $EXIT || @should_finish
+      ::Nerve.exit? || @should_finish
     end
   end
 end

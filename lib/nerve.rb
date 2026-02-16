@@ -12,6 +12,22 @@ require "nerve/reporter"
 require "nerve/service_watcher"
 
 module Nerve
+  @exit = false
+
+  class << self
+    def exit?
+      @exit
+    end
+
+    def exit!
+      @exit = true
+    end
+
+    def reset_exit!
+      @exit = false
+    end
+  end
+
   class Nerve
     include Logging
     include Utils
@@ -27,8 +43,7 @@ module Nerve
 
       StatsD.configure_statsd(@config_manager.config["statsd"] || {})
 
-      # set global variable for exit signal
-      $EXIT = false
+      ::Nerve.reset_exit!
 
       # State of currently running watchers according to Nerve
       @watchers = {}
@@ -50,8 +65,8 @@ module Nerve
       end
 
       log.debug "nerve: completed init"
-    rescue Exception => e
-      statsd && statsd.increment("nerve.stop", tags: ["stop_avenue:abort", "stop_location:init", "exception_name:#{e.class.name}", "exception_message:#{e.message}"])
+    rescue Exception => e # standard:disable Lint/RescueException
+      statsd&.increment("nerve.stop", tags: ["stop_avenue:abort", "stop_location:init", "exception_name:#{e.class.name}", "exception_message:#{e.message}"])
       raise e
     end
 
@@ -89,7 +104,7 @@ module Nerve
       statsd.increment("nerve.start")
 
       statsd.time("nerve.main_loop.elapsed_time") do
-        until $EXIT
+        until ::Nerve.exit?
           # Check if configuration needs to be reloaded and reconcile any new
           # configuration of watchers with old configuration
           if @config_to_load
@@ -178,14 +193,14 @@ module Nerve
           # Indicate we've made progress
           heartbeat
 
-          responsive_sleep(MAIN_LOOP_SLEEP_S) { @config_to_load || $EXIT }
+          responsive_sleep(MAIN_LOOP_SLEEP_S) { @config_to_load || ::Nerve.exit? }
         end
       rescue => e
         log.error "nerve: encountered unexpected exception #{e.inspect} in main thread"
         statsd.increment("nerve.stop", tags: ["stop_avenue:abort", "stop_location:main_loop", "exception_name:#{e.class.name}", "exception_message:#{e.message}"])
         raise e
       ensure
-        $EXIT = true
+        ::Nerve.exit!
         log.warn "nerve: reaping all watchers"
         @watchers.each do |name, _|
           reap_watcher(name)
@@ -195,7 +210,7 @@ module Nerve
       log.info "nerve: exiting"
       statsd.increment("nerve.stop", tags: ["stop_avenue:clean", "stop_location:main_loop"])
     ensure
-      $EXIT = true
+      ::Nerve.exit!
     end
 
     def heartbeat
@@ -234,7 +249,7 @@ module Nerve
         @watchers[name] = watcher
         if wait
           log.info "nerve: waiting for watcher thread #{name} to report"
-          responsive_sleep(LAUNCH_WAIT_FOR_REPORT_S) { !watcher.was_up.nil? || $EXIT }
+          responsive_sleep(LAUNCH_WAIT_FOR_REPORT_S) { !watcher.was_up.nil? || ::Nerve.exit? }
           log.info "nerve: watcher thread #{name} has reported!"
         end
       end

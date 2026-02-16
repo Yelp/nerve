@@ -21,12 +21,11 @@ module Nerve
           redis.exists("nerve-redis-service-check")
           true
         ensure
-          redis.close if redis
+          redis&.close
         end
       end
     end
 
-    CHECKS ||= {}
     CHECKS["redis"] = RedisServiceCheck
   end
 end
