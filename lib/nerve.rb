@@ -94,7 +94,7 @@ module Nerve
 
       statsd.time("nerve.main_loop.elapsed_time") do
         until $EXIT
-          main_loop_start = Time.now
+          main_loop_start = monotonic_time
 
           # Poll overlay file mtime to detect config changes without SIGHUP
           current_overlay_mtime = @config_manager.overlay_mtime
@@ -207,7 +207,7 @@ module Nerve
           # Indicate we've made progress
           heartbeat
 
-          prom_observe(:main_loop_duration_seconds, Time.now - main_loop_start)
+          prom_observe(:main_loop_duration_seconds, monotonic_time - main_loop_start)
           responsive_sleep(MAIN_LOOP_SLEEP_S) { @config_to_load || $EXIT }
         end
       rescue => e
@@ -304,6 +304,12 @@ module Nerve
       prom_set(:watchers_up, up_count)
       prom_set(:watchers_down, down_count)
       prom_set(:repeated_report_failures_max, max_failures)
+    end
+
+    private
+
+    def monotonic_time
+      Process.clock_gettime(Process::CLOCK_MONOTONIC)
     end
   end
 end
