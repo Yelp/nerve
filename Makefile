@@ -55,6 +55,10 @@ test-docker: ## Run tests in Docker container
 lint: ## Check code style with StandardRB
 	$(BUNDLE) exec standardrb
 
+.PHONY: docs-config
+docs-config: ## Regenerate configuration reference from JSON schema
+	$(BUNDLE) exec ruby scripts/generate_config_docs.rb
+
 .PHONY: fix
 fix: ## Auto-fix code style issues
 	$(BUNDLE) exec standardrb --fix

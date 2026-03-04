@@ -21,6 +21,7 @@ make setup-local   # Install dependencies locally
 make test          # Run test suite
 make test-docker   # Run tests in Docker container
 make lint          # Check code style with StandardRB
+make docs-config   # Regenerate docs/configuration.md from docs/config-schema.json
 make fix           # Auto-fix code style issues
 make console       # Start interactive Ruby console
 make clean         # Remove generated files
@@ -65,10 +66,17 @@ This uses the repo's `.venv` for pre-commit. If you already have `pre-commit` on
 bundle exec bin/nerve --help
 
 # Validate config
-bundle exec bin/nerve -c example/nerve.conf.json --check
+bundle exec bin/nerve -c example/nerve.conf.json --check-config
 
 # Run with config (requires ZooKeeper)
 bundle exec bin/nerve -c example/nerve.conf.json
+
+# Run with config + CLI overrides
+bundle exec bin/nerve \
+  -c example/nerve.conf.json \
+  --instance-id my-host \
+  --prometheus-enabled=true \
+  --statsd-host statsd.local
 ```
 
 ## Project Structure
