@@ -1,0 +1,426 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Yelp/nerve/blob/master/docs/config-schema.json",
+  "title": "Nerve configuration",
+  "description": "Schema for Nerve base configuration, optional overlay configuration, and CLI-overridable fields.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "instance_id",
+    "services"
+  ],
+  "x-config-sources": [
+    {
+      "name": "Base config file",
+      "flag": "--config",
+      "required": true,
+      "description": "Primary YAML/JSON configuration file."
+    },
+    {
+      "name": "Overlay config file",
+      "flag": "--config-overlay",
+      "required": false,
+      "description": "Optional deep-merge overlay loaded after the base config."
+    },
+    {
+      "name": "CLI overrides",
+      "required": false,
+      "description": "Typed flags applied after config files."
+    }
+  ],
+  "x-config-precedence": [
+    {
+      "source": "CLI overrides",
+      "description": "Highest precedence. Explicit runtime overrides for selected fields."
+    },
+    {
+      "source": "Overlay config (`--config-overlay`)",
+      "description": "Deep-merged on top of the base config after service file loading."
+    },
+    {
+      "source": "Base config (`--config`)",
+      "description": "Lowest precedence baseline configuration."
+    }
+  ],
+  "x-load-order": [
+    "Parse the base config from --config.",
+    "Resolve service_conf_dir in this order: CLI override, overlay, base config.",
+    "Load per-service YAML/JSON files from service_conf_dir into services.",
+    "Deep-merge overlay config on top of the base+service config.",
+    "Apply CLI overrides (including --instance-id aliases and typed global flags)."
+  ],
+  "x-doc-sections": [
+    {
+      "title": "Top-level fields",
+      "pointer": "#"
+    },
+    {
+      "title": "StatsD fields",
+      "pointer": "#/properties/statsd"
+    },
+    {
+      "title": "Prometheus fields",
+      "pointer": "#/properties/prometheus"
+    },
+    {
+      "title": "Service fields",
+      "pointer": "#/$defs/service"
+    },
+    {
+      "title": "Rate limiting fields",
+      "pointer": "#/$defs/rate_limiting"
+    },
+    {
+      "title": "Check fields",
+      "pointer": "#/$defs/check"
+    }
+  ],
+  "x-cli-examples": [
+    [
+      "bundle exec bin/nerve \\",
+      "  --config /etc/nerve/nerve.conf.json \\",
+      "  --config-overlay /etc/nerve/overlay.yaml \\",
+      "  --instance-id host-123 \\",
+      "  --prometheus-enabled=true \\",
+      "  --prometheus-histogram-buckets-zk='[0.01, 0.1, 1.0]'"
+    ],
+    [
+      "bundle exec bin/nerve \\",
+      "  --config /etc/nerve/nerve.conf.json \\",
+      "  --statsd-host statsd.local \\",
+      "  --statsd-port 8125 \\",
+      "  --max-repeated-report-failures 20"
+    ]
+  ],
+  "properties": {
+    "instance_id": {
+      "type": "string",
+      "description": "Instance identifier reported to service discovery backends.",
+      "x-cli-flags": [
+        "--instance-id",
+        "--instance_id",
+        "-i"
+      ]
+    },
+    "services": {
+      "type": "object",
+      "description": "Map of service name to service configuration.",
+      "default": {},
+      "additionalProperties": {
+        "$ref": "#/$defs/service"
+      }
+    },
+    "heartbeat_path": {
+      "type": "string",
+      "description": "Optional path for a heartbeat file touched on each main loop iteration.",
+      "x-cli-flags": [
+        "--heartbeat-path"
+      ]
+    },
+    "service_conf_dir": {
+      "type": "string",
+      "description": "Optional directory containing per-service YAML/JSON config files.",
+      "x-cli-flags": [
+        "--service-conf-dir"
+      ]
+    },
+    "max_repeated_report_failures": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum consecutive reporter failures before stopping a watcher.",
+      "x-cli-flags": [
+        "--max-repeated-report-failures"
+      ]
+    },
+    "statsd": {
+      "type": "object",
+      "description": "Global StatsD client settings.",
+      "additionalProperties": true,
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "StatsD host.",
+          "x-cli-flags": [
+            "--statsd-host"
+          ]
+        },
+        "port": {
+          "type": "integer",
+          "description": "StatsD port.",
+          "x-cli-flags": [
+            "--statsd-port"
+          ]
+        }
+      }
+    },
+    "prometheus": {
+      "type": "object",
+      "description": "Prometheus metrics endpoint configuration.",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable Prometheus metrics endpoint.",
+          "x-cli-flags": [
+            "--prometheus-enabled"
+          ]
+        },
+        "port": {
+          "type": "integer",
+          "description": "Prometheus metrics listener port.",
+          "x-cli-flags": [
+            "--prometheus-port"
+          ]
+        },
+        "bind": {
+          "type": "string",
+          "description": "Prometheus metrics bind address.",
+          "x-cli-flags": [
+            "--prometheus-bind"
+          ]
+        },
+        "histogram_buckets_zk": {
+          "type": "array",
+          "description": "Histogram bucket boundaries for ZooKeeper operation metrics.",
+          "items": {
+            "type": "number"
+          },
+          "x-cli-flags": [
+            "--prometheus-histogram-buckets-zk"
+          ]
+        },
+        "histogram_buckets_main_loop": {
+          "type": "array",
+          "description": "Histogram bucket boundaries for main loop duration metrics.",
+          "items": {
+            "type": "number"
+          },
+          "x-cli-flags": [
+            "--prometheus-histogram-buckets-main-loop"
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "service": {
+      "type": "object",
+      "description": "Configuration for a single service watcher.",
+      "required": [
+        "host",
+        "port"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "Host that checks should target by default."
+        },
+        "port": {
+          "type": "integer",
+          "description": "Port that checks should target by default."
+        },
+        "reporter_type": {
+          "type": "string",
+          "description": "Reporter backend type. Built-in values are zookeeper and etcd.",
+          "default": "zookeeper"
+        },
+        "check_interval": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Seconds between health-check cycles.",
+          "default": 0.5
+        },
+        "check_mocked": {
+          "type": "boolean",
+          "description": "If true, skip checks and report the service as healthy.",
+          "default": false
+        },
+        "checks": {
+          "type": "array",
+          "description": "Health checks for this service. All checks must pass for the service to be considered up.",
+          "items": {
+            "$ref": "#/$defs/check"
+          },
+          "default": []
+        },
+        "rate_limiting": {
+          "$ref": "#/$defs/rate_limiting"
+        },
+        "max_repeated_report_failures": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Per-service override for max consecutive report failures before stopping watcher.",
+          "default": 10
+        },
+        "load_test_concurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "If set, Nerve launches this many watcher instances for the service."
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional service weight included in reporter payload."
+        },
+        "haproxy_server_options": {
+          "type": "string",
+          "description": "Optional HAProxy server options included in reporter payload."
+        },
+        "labels": {
+          "type": "object",
+          "description": "Optional labels included in reporter payload.",
+          "additionalProperties": true
+        },
+        "zk_hosts": {
+          "type": "array",
+          "description": "Required when reporter_type is zookeeper. List of ZooKeeper hosts.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "zk_path": {
+          "type": "string",
+          "description": "Required when reporter_type is zookeeper. Parent path for ephemeral registration keys."
+        },
+        "use_path_encoding": {
+          "type": "boolean",
+          "description": "When true, encode full payload into the ZooKeeper child key where possible."
+        },
+        "etcd_host": {
+          "type": "string",
+          "description": "Required when reporter_type is etcd. Etcd host."
+        },
+        "etcd_port": {
+          "type": "integer",
+          "description": "Etcd port.",
+          "default": 4003
+        },
+        "etcd_path": {
+          "type": "string",
+          "description": "Etcd parent path where service keys are created.",
+          "default": "/"
+        }
+      }
+    },
+    "rate_limiting": {
+      "type": "object",
+      "description": "Token-bucket rate limiter for status transition reports.",
+      "additionalProperties": true,
+      "properties": {
+        "shadow_mode": {
+          "type": "boolean",
+          "description": "When true, throttling is observed but updates are still sent.",
+          "default": true
+        },
+        "average_rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average allowed status transitions per second.",
+          "default": "infinity"
+        },
+        "max_burst": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Maximum burst size when tokens are available.",
+          "default": "infinity"
+        }
+      }
+    },
+    "check": {
+      "type": "object",
+      "description": "Health check definition. Built-in check types are noop, tcp, http, redis, and rabbitmq.",
+      "required": [
+        "type"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Check type. Custom external checks are also supported via plugins."
+        },
+        "module": {
+          "type": "string",
+          "description": "Optional Ruby module/gem to require for custom check types."
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional check name. Defaults to a generated name if omitted."
+        },
+        "host": {
+          "type": "string",
+          "description": "Target host. Defaults to the service host if omitted."
+        },
+        "port": {
+          "type": "integer",
+          "description": "Target port. Defaults to the service port if omitted."
+        },
+        "timeout": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Check timeout in seconds.",
+          "default": 0.1
+        },
+        "rise": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Consecutive successes required to transition to up.",
+          "default": 1
+        },
+        "fall": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Consecutive failures required to transition to down.",
+          "default": 1
+        },
+        "uri": {
+          "type": "string",
+          "description": "Required for http checks. Request path, for example /health."
+        },
+        "ssl": {
+          "type": "boolean",
+          "description": "HTTP check only. Use TLS when true.",
+          "default": false
+        },
+        "read_timeout": {
+          "type": "number",
+          "minimum": 0,
+          "description": "HTTP check only. Socket read timeout in seconds."
+        },
+        "open_timeout": {
+          "type": "number",
+          "minimum": 0,
+          "description": "HTTP check only. Connection open timeout in seconds.",
+          "default": 0.2
+        },
+        "ssl_timeout": {
+          "type": "number",
+          "minimum": 0,
+          "description": "HTTP check only. TLS handshake timeout in seconds.",
+          "default": 0.2
+        },
+        "headers": {
+          "type": "object",
+          "description": "HTTP check only. Additional request headers.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "expect": {
+          "type": "string",
+          "description": "HTTP check only. Substring expected in response body."
+        },
+        "username": {
+          "type": "string",
+          "description": "RabbitMQ check only. Username.",
+          "default": "guest"
+        },
+        "password": {
+          "type": "string",
+          "description": "RabbitMQ check only. Password.",
+          "default": "guest"
+        }
+      }
+    }
+  }
+}
