@@ -107,6 +107,7 @@ Configuration for a single service watcher.
 | `labels` | `object` | no | - | - | Optional labels included in reporter payload. |
 | `zk_hosts` | `array<string>` | no | - | - | Required when reporter_type is zookeeper. List of ZooKeeper hosts. |
 | `zk_path` | `string` | no | - | - | Required when reporter_type is zookeeper. Parent path for ephemeral registration keys. |
+| `zk_cluster_name` | `string` | no | - | - | Optional human-friendly name for the ZooKeeper ensemble. When set, ZooKeeper metric tags/labels use this name instead of the derived host prefix. |
 | `use_path_encoding` | `boolean` | no | - | - | When true, encode full payload into the ZooKeeper child key where possible. |
 | `etcd_host` | `string` | no | - | - | Required when reporter_type is etcd. Etcd host. |
 | `etcd_port` | `integer` | no | `4003` | - | Etcd port. |
