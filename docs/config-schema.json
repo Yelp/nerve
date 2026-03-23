@@ -283,6 +283,10 @@
           "type": "string",
           "description": "Required when reporter_type is zookeeper. Parent path for ephemeral registration keys."
         },
+        "zk_cluster_name": {
+          "type": "string",
+          "description": "Optional human-friendly name for the ZooKeeper ensemble. When set, Prometheus and StatsD ZooKeeper metrics use this name instead of the derived host prefix."
+        },
         "use_path_encoding": {
           "type": "boolean",
           "description": "When true, encode full payload into the ZooKeeper child key where possible."

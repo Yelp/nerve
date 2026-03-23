@@ -14,6 +14,7 @@ class Nerve::Reporter
 
     @@zk_pool = {}
     @@zk_pool_count = {}
+    @@zk_pool_cluster_name = {}
     @@zk_pool_lock = Mutex.new
 
     def initialize(service)
@@ -22,7 +23,9 @@ class Nerve::Reporter
       end
       # Since we pool we get one connection per zookeeper cluster
       zk_host_list = service["zk_hosts"].sort
-      @zk_cluster = host_list_to_cluster(zk_host_list)
+      @derived_zk_cluster = host_list_to_cluster(zk_host_list)
+      @configured_zk_cluster = service["zk_cluster_name"]
+      @zk_cluster = @configured_zk_cluster || @derived_zk_cluster
       @zk_connection_string = zk_host_list.join(",")
       @data = parse_data(get_service_data(service))
 
@@ -39,14 +42,20 @@ class Nerve::Reporter
         if @@zk_pool.has_key?(@zk_connection_string)
           @@zk_pool_count[@zk_connection_string] += 1
           log.info "nerve: re-using existing zookeeper connection to #{@zk_connection_string}"
-          statsd.increment("nerve.reporter.zk.client.reused", tags: ["zk_cluster:#{@zk_cluster}"])
         else
           log.info "nerve: creating pooled connection to #{@zk_connection_string}"
           @@zk_pool[@zk_connection_string] = ZK.new(@zk_connection_string, timeout: 5)
           @@zk_pool_count[@zk_connection_string] = 1
+          @@zk_pool_cluster_name[@zk_connection_string] = @zk_cluster
           log.info "nerve: successfully created zk connection to #{@zk_connection_string}"
-          statsd.increment("nerve.reporter.zk.client.created", tags: ["zk_cluster:#{@zk_cluster}"])
         end
+
+        if @@zk_pool_cluster_name[@zk_connection_string] != @zk_cluster
+          log.warn "nerve: ignoring zk_cluster_name #{@zk_cluster.inspect} for #{@zk_connection_string}; using #{@@zk_pool_cluster_name[@zk_connection_string].inspect}"
+        end
+        @zk_cluster = @@zk_pool_cluster_name[@zk_connection_string]
+
+        statsd.increment("nerve.reporter.zk.client.#{(@@zk_pool_count[@zk_connection_string] > 1) ? "reused" : "created"}", tags: ["zk_cluster:#{@zk_cluster}"])
         @zk = @@zk_pool[@zk_connection_string]
         prom_set(:zk_pool_size, @@zk_pool_count[@zk_connection_string], labels: {zk_cluster: @zk_cluster})
         log.info "nerve: retrieved zk connection to #{@zk_connection_string}"
@@ -66,6 +75,7 @@ class Nerve::Reporter
             @zk.close!
           ensure
             @@zk_pool.delete(@zk_connection_string)
+            @@zk_pool_cluster_name.delete(@zk_connection_string)
           end
         end
       }
@@ -126,6 +136,12 @@ class Nerve::Reporter
 
     private
 
+    def zk_cluster_for_metrics
+      @@zk_pool_lock.synchronize {
+        @@zk_pool_cluster_name.fetch(@zk_connection_string, @zk_cluster)
+      }
+    end
+
     def host_list_to_cluster(list)
       first_host = list.sort.first
       first_token = first_host.split(".").first
@@ -139,7 +155,7 @@ class Nerve::Reporter
       if service["use_path_encoding"] == true
         encoded = Base64.urlsafe_encode64(@data)
         length = encoded.length
-        statsd.gauge("nerve.reporter.zk.child.bytes", length, tags: ["zk_cluster:#{@zk_cluster}", "zk_path:#{@zk_path}"])
+        statsd.gauge("nerve.reporter.zk.child.bytes", length, tags: ["zk_cluster:#{zk_cluster_for_metrics}", "zk_path:#{@zk_path}"])
         if length <= PATH_ENCODING_MAX_LENGTH
           return "/base64_#{length}_#{encoded}_"
         end

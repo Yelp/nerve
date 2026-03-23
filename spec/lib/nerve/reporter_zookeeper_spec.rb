@@ -15,8 +15,77 @@ describe Nerve::Reporter::Zookeeper do
 
   let(:zk) { double("zk") }
 
+  after(:each) do
+    Nerve::Reporter::Zookeeper.class_variable_set(:@@zk_pool, {})
+    Nerve::Reporter::Zookeeper.class_variable_set(:@@zk_pool_count, {})
+    Nerve::Reporter::Zookeeper.class_variable_set(:@@zk_pool_cluster_name, {})
+  end
+
   it "actually constructs an instance" do
     expect(Nerve::Reporter::Zookeeper.new(subject).is_a?(Nerve::Reporter::Zookeeper)).to eql(true)
+  end
+
+  it "uses zk_cluster_name when provided" do
+    allow(zk).to receive(:close!)
+    allow(ZK).to receive(:new).and_return(zk)
+
+    reporter = Nerve::Reporter::Zookeeper.new(subject.merge("zk_cluster_name" => "useast1-prod"))
+    reporter.start
+
+    expect(reporter.instance_variable_get(:@zk_cluster)).to eq("useast1-prod")
+  end
+
+  it "keeps a stable pooled cluster name for the same zk hosts" do
+    allow(zk).to receive(:close!)
+    allow(ZK).to receive(:new).and_return(zk)
+
+    first = Nerve::Reporter::Zookeeper.new(subject.merge("zk_cluster_name" => "useast1-prod"))
+    second = Nerve::Reporter::Zookeeper.new(subject.merge("zk_cluster_name" => "different-name"))
+
+    first.start
+    second.start
+
+    expect(first.instance_variable_get(:@zk_cluster)).to eq("useast1-prod")
+    expect(second.instance_variable_get(:@zk_cluster)).to eq("useast1-prod")
+  end
+
+  it "tags child bytes metrics with the pooled cluster name" do
+    statsd = double("statsd")
+    allow(statsd).to receive(:increment)
+    allow(statsd).to receive(:gauge)
+    allow_any_instance_of(Nerve::Reporter::Zookeeper).to receive(:statsd).and_return(statsd)
+
+    allow(zk).to receive(:close!)
+    allow(ZK).to receive(:new).and_return(zk)
+
+    first = Nerve::Reporter::Zookeeper.new(subject.merge("zk_cluster_name" => "useast1-prod"))
+    first.start
+
+    expect(statsd).to receive(:gauge).with(
+      "nerve.reporter.zk.child.bytes",
+      kind_of(Integer),
+      tags: ["zk_cluster:useast1-prod", "zk_path:zk_path"]
+    )
+
+    Nerve::Reporter::Zookeeper.new(subject.merge(
+      "zk_cluster_name" => "different-name",
+      "use_path_encoding" => true
+    ))
+  end
+
+  it "tags child bytes metrics with the derived cluster name by default" do
+    statsd = double("statsd")
+    allow(statsd).to receive(:increment)
+    allow(statsd).to receive(:gauge)
+    allow_any_instance_of(Nerve::Reporter::Zookeeper).to receive(:statsd).and_return(statsd)
+
+    expect(statsd).to receive(:gauge).with(
+      "nerve.reporter.zk.child.bytes",
+      kind_of(Integer),
+      tags: ["zk_cluster:zkhost", "zk_path:zk_path"]
+    )
+
+    Nerve::Reporter::Zookeeper.new(subject.merge("use_path_encoding" => true))
   end
 
   it "deregisters service on exit" do
